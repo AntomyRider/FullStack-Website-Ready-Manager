@@ -1,0 +1,40 @@
+services:
+  db:
+    image: mariadb:10.11
+    container_name: licence_db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: bonus2548
+      MARIADB_DATABASE: Licence
+      MARIADB_USER: nutx
+      MARIADB_PASSWORD: bonus2548
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u nutx --password=$$MARIADB_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: licence_api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      CLIENT_ORIGIN: http://157.254.192.134
+      JWT_SECRET: Secret_Ready_Manager
+      DATABASE_URL: mysql://nutx:bonus2548@db:3306/Licence
+      DB_HOST: db
+      DB_USER: nutx
+      DB_PASSWORD: bonus2548
+      DB_NAME: Licence
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
