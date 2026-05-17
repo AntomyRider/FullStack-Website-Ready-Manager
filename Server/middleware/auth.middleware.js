@@ -14,12 +14,17 @@ const getCookie = (req, name) => {
   return cookie ? decodeURIComponent(cookie.split("=")[1]) : null;
 };
 
+const getTokenFromRequest = (req) => {
+  const authHeader = req.headers.authorization;
+
+  return authHeader?.startsWith("Bearer ")
+    ? authHeader.split(" ")[1]
+    : getCookie(req, "token");
+};
+
 const protect = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.split(" ")[1]
-      : getCookie(req, "token");
+    const token = getTokenFromRequest(req);
 
     if (!token) {
       return res.status(401).json({
@@ -40,4 +45,4 @@ const protect = (req, res, next) => {
   }
 };
 
-module.exports = { protect, JWT_SECRET };
+module.exports = { protect, JWT_SECRET, getTokenFromRequest };

@@ -181,14 +181,15 @@ const TableLicenses = () => {
             <colgroup>
               <col style={{ width: "60px" }} />
               <col style={{ width: "220px" }} />
-              <col />
+              <col style={{ width: "220px" }} />
               <col style={{ width: "110px" }} />
+              <col style={{ width: "160px" }} />
               <col style={{ width: "160px" }} />
               <col style={{ width: "90px" }} />
             </colgroup>
             <thead className="sticky top-0 z-10 bg-zinc-950 border-b border-zinc-800/60">
               <tr>
-                {["ID", "Key", "HWID", "Status", "Expire", "Action"].map((h) => (
+                {["ID", "Key", "HWID", "Status", "Expires At", "Created At", "Action"].map((h) => (
                   <th key={h} className="px-5 py-3.5 text-left text-[11px] font-medium tracking-widest uppercase text-zinc-600">
                     {h}
                   </th>
@@ -199,7 +200,7 @@ const TableLicenses = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-zinc-600 text-sm">
+                  <td colSpan={7} className="px-5 py-12 text-center text-zinc-600 text-sm">
                     <div className="flex items-center justify-center gap-2">
                       <RotateCcw size={15} className="animate-spin" />Loading...
                     </div>
@@ -207,7 +208,7 @@ const TableLicenses = () => {
                 </tr>
               ) : filteredLicenses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-zinc-600 text-sm">
+                  <td colSpan={7} className="px-5 py-12 text-center text-zinc-600 text-sm">
                     No licenses found
                   </td>
                 </tr>
@@ -251,9 +252,15 @@ const TableLicenses = () => {
                         </button>
                       </td>
 
-                      {/* Expire */}
+
                       <td className="px-5 py-4 text-xs text-zinc-600">
                         {new Date(license.expireAt).toLocaleDateString("en-GB", {
+                          day: "2-digit", month: "short", year: "numeric"
+                        })}
+                      </td>
+
+                      <td className="px-5 py-4 text-xs text-zinc-600">
+                        {new Date(license.createAt).toLocaleDateString("en-GB", {
                           day: "2-digit", month: "short", year: "numeric"
                         })}
                       </td>

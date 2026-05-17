@@ -6,6 +6,7 @@ const CreateLicenses = ({ open, setOpen, fetchLicenses }) => {
   const [form, setForm] = useState({
     amount: "",
     exp: "",
+    maxUsersPerKey: "",
   })
 
   const handleSubmit = async (e) => {
@@ -89,6 +90,25 @@ const CreateLicenses = ({ open, setOpen, fetchLicenses }) => {
                 setForm({
                   ...form,
                   exp: e.target.value,
+                })
+              }
+              className="w-full h-12 px-4 rounded-lg bg-zinc-900 border border-zinc-800 text-white outline-none focus:border-emerald-500/40 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-zinc-400 mb-2">
+              Max User
+            </label>
+
+            <input
+              type="number"
+              min={0}
+              value={form.maxUsersPerKey}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  maxUsersPerKey: e.target.value,
                 })
               }
               className="w-full h-12 px-4 rounded-lg bg-zinc-900 border border-zinc-800 text-white outline-none focus:border-emerald-500/40 transition-all"

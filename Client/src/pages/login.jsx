@@ -1,11 +1,13 @@
-import { useState } from "react"
-import { Mail, Lock, Eye, EyeOff, Zap, ArrowRight } from "lucide-react"
-import { login } from "../api/auth"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { Mail, Lock, Eye, EyeOff, Zap, ArrowRight, Loader2 } from "lucide-react"
+import { login, me } from "../api/auth"
+import { useLocation, useNavigate } from "react-router-dom"
 
 const Login = () => {
 
     const navigate = useNavigate()
+    const location = useLocation()
+    const redirectTo = location.state?.from || "/"
 
   const [form, setForm] = useState({
     email: "",
@@ -14,6 +16,31 @@ const Login = () => {
 
   const [showPw, setShowPw] = useState(false)
   const [errors, setErrors] = useState({})
+  const [checking, setChecking] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+
+    const checkExistingSession = async () => {
+      const res = await me()
+
+      if (!mounted) return
+
+      if (res.success) {
+        navigate(redirectTo, { replace: true })
+        return
+      }
+
+      setChecking(false)
+    }
+
+    checkExistingSession()
+
+    return () => {
+      mounted = false
+    }
+  }, [navigate, redirectTo])
 
   const validate = () => {
     const errs = {}
@@ -30,18 +57,35 @@ const Login = () => {
   }
 
   const handleSubmit = async () => {
+    if (submitting) return
+
     const errs = validate()
     setErrors(errs)
 
     if (Object.keys(errs).length > 0) return
 
     try {
+      setSubmitting(true)
       const res = await login(form)
-      if (res.success === true)
-        navigate('/')
+      if (res.success === true) {
+        navigate(redirectTo, { replace: true })
+      } else {
+        setErrors({ form: res.message || "Login failed" })
+      }
     } catch (error) {
       console.error(error)
+    } finally {
+      setSubmitting(false)
     }
+  }
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black text-zinc-500">
+        <Loader2 size={20} className="animate-spin mr-2" />
+        Checking session
+      </div>
+    )
   }
 
   return (
@@ -116,13 +160,18 @@ const Login = () => {
           )}
         </div>
 
+        {errors.form && (
+          <p className="text-xs text-red-400 mb-3">{errors.form}</p>
+        )}
+
         {/* Button */}
         <button
           onClick={handleSubmit}
+          disabled={submitting}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/15 transition"
         >
-          <ArrowRight size={15} />
-          Sign in
+          {submitting ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
+          {submitting ? "Signing in" : "Sign in"}
         </button>
 
       </div>
