@@ -1,11 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
-  // output   = "../generated/prisma"
 }
 
 datasource db {
@@ -20,26 +14,15 @@ enum StatusKey {
 model Licence {
   id          Int       @id @default(autoincrement())
   key         String    @unique
-  hwids       LicenceHwid[]  // relation
+  hwid        String?
   status      StatusKey @default(Enable)
   expireAt    DateTime?
   activatedAt DateTime?
-  maxUsersPerKey Int       @default(1)
-  usedCount      Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([key])
-}
-
-model LicenceHwid {
-  id         Int      @id @default(autoincrement())
-  licenceId  Int
-  hwid       String
-  createdAt  DateTime @default(now())
-  licence    Licence  @relation(fields: [licenceId], references: [id], onDelete: Cascade)
-
-  @@unique([licenceId, hwid])
+  @@index([hwid])
 }
 
 model User {

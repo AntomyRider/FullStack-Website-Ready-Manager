@@ -6,25 +6,13 @@ Base URL:
 http://157.254.192.134/api
 ```
 
-Content type:
+All requests use JSON:
 
 ```http
 Content-Type: application/json
 ```
 
-Admin authentication uses an HTTP-only cookie named `token`. After login, the browser stores the cookie automatically. Frontend requests must include credentials/cookies.
-
-For Axios:
-
-```js
-axios.get("/api/auth/me", { withCredentials: true })
-```
-
-For curl:
-
-```bash
-curl -i -c cookies.txt -b cookies.txt http://157.254.192.134/api/auth/me
-```
+Admin authentication uses an HTTP-only cookie named `token`. JavaScript cannot read this cookie directly. Use `/auth/me` to check the current session.
 
 ## Auth
 
@@ -43,7 +31,7 @@ Request:
 }
 ```
 
-Success response:
+Success:
 
 ```json
 {
@@ -55,19 +43,13 @@ Success response:
 }
 ```
 
-Notes:
-
-- Sets `token` cookie.
-- Cookie is `httpOnly`, so JavaScript cannot read it directly.
-- Use `/auth/me` to check whether the token is valid.
-
-### Check Current Session
+### Check Session
 
 ```http
 GET /auth/me
 ```
 
-Success response:
+Success:
 
 ```json
 {
@@ -80,7 +62,7 @@ Success response:
 }
 ```
 
-Unauthenticated response:
+No session:
 
 ```json
 {
@@ -89,16 +71,11 @@ Unauthenticated response:
 }
 ```
 
-Notes:
-
-- This endpoint returns HTTP `200` even when no session exists.
-- If the token is invalid or expired, the server clears the cookie and returns `success: false`.
-
 ## Admin Licence APIs
 
-These endpoints require the admin `token` cookie from login.
+These endpoints require the admin `token` cookie.
 
-### Create Licence Keys
+### Create Keys
 
 ```http
 POST /licences/create
@@ -109,8 +86,7 @@ Request:
 ```json
 {
   "amount": 5,
-  "exp": 30,
-  "maxUsersPerKey": 1
+  "exp": 30
 }
 ```
 
@@ -118,9 +94,8 @@ Fields:
 
 - `amount`: number of keys to create. Default: `1`
 - `exp`: expiry in days. `0` means no expiry. Default: `0`
-- `maxUsersPerKey`: number of HWIDs/users allowed per key. Default: `1`
 
-Success response:
+Success:
 
 ```json
 {
@@ -128,53 +103,42 @@ Success response:
   "amount": 5,
   "exp": 30,
   "expireAt": "2026-06-16T00:00:00.000Z",
-  "maxUsersPerKey": 1,
   "keys": [
     "ABCDE-12345-FGHIJ-67890"
   ]
 }
 ```
 
-### List Licence Keys
+### List Keys
 
 ```http
 GET /licences/list
 ```
 
-Success response:
+Success:
 
 ```json
 [
   {
     "id": 1,
     "key": "ABCDE-12345-FGHIJ-67890",
+    "hwid": null,
     "status": "Enable",
     "expireAt": "2026-06-16T00:00:00.000Z",
     "activatedAt": null,
-    "maxUsersPerKey": 1,
-    "usedCount": 0,
     "createdAt": "2026-05-17T00:00:00.000Z",
-    "updatedAt": "2026-05-17T00:00:00.000Z",
-    "hwids": [],
-    "usedSlots": 0,
-    "availableSlots": 1
+    "updatedAt": "2026-05-17T00:00:00.000Z"
   }
 ]
 ```
 
-### Delete Licence Key
+### Delete Key
 
 ```http
 DELETE /licences/delete/:id
 ```
 
-Example:
-
-```http
-DELETE /licences/delete/1
-```
-
-Success response:
+Success:
 
 ```json
 {
@@ -187,7 +151,7 @@ Success response:
 }
 ```
 
-### Update Licence Status
+### Update Status
 
 ```http
 POST /licences/update/:id
@@ -201,21 +165,17 @@ Request:
 }
 ```
 
-Allowed status:
+Allowed values:
 
 - `Enable`
 - `Disable`
 
-Success response:
+Success:
 
 ```json
 {
   "success": true,
-  "message": "Key updated",
-  "data": {
-    "id": 1,
-    "status": "Disable"
-  }
+  "message": "Key updated"
 }
 ```
 
@@ -225,7 +185,7 @@ Success response:
 POST /licences/resetkey
 ```
 
-Reset all HWIDs for a key:
+Request:
 
 ```json
 {
@@ -233,16 +193,7 @@ Reset all HWIDs for a key:
 }
 ```
 
-Reset only one HWID:
-
-```json
-{
-  "key": "ABCDE-12345-FGHIJ-67890",
-  "hwid": "USER-HWID-001"
-}
-```
-
-Success response:
+Success:
 
 ```json
 {
@@ -257,7 +208,7 @@ Success response:
 GET /licences/stats
 ```
 
-Success response:
+Success:
 
 ```json
 {
@@ -277,9 +228,15 @@ Success response:
 
 ## Public Licence APIs
 
-These endpoints are public and do not require admin login.
+These endpoints are public and are used by the desktop/client app.
 
-### Activate Licence
+Rule:
+
+```text
+1 key = 1 HWID
+```
+
+### Activate Key
 
 ```http
 POST /licences/activate
@@ -294,7 +251,13 @@ Request:
 }
 ```
 
-Success response:
+Behavior:
+
+- If the key has no HWID, the server binds this HWID to the key.
+- If the key already has the same HWID, activation succeeds again.
+- If the key already has a different HWID, activation fails with `HWID mismatch`.
+
+Success:
 
 ```json
 {
@@ -303,23 +266,7 @@ Success response:
 }
 ```
 
-Error examples:
-
-```json
-{
-  "success": false,
-  "message": "Key is full (max 1 user)"
-}
-```
-
-```json
-{
-  "success": false,
-  "message": "Licence expired"
-}
-```
-
-### Verify Licence
+### Verify Key
 
 ```http
 POST /licences/verify
@@ -334,7 +281,7 @@ Request:
 }
 ```
 
-Success response:
+Success:
 
 ```json
 {
@@ -348,9 +295,25 @@ Success response:
 }
 ```
 
-## Example curl Flow
+Error examples:
 
-Login and save cookie:
+```json
+{
+  "success": false,
+  "message": "HWID mismatch"
+}
+```
+
+```json
+{
+  "success": false,
+  "message": "Licence expired"
+}
+```
+
+## curl Examples
+
+Login:
 
 ```bash
 curl -i -c cookies.txt \
@@ -359,22 +322,16 @@ curl -i -c cookies.txt \
   http://157.254.192.134/api/auth/login
 ```
 
-Check session:
-
-```bash
-curl -b cookies.txt http://157.254.192.134/api/auth/me
-```
-
-Create key:
+Create one key:
 
 ```bash
 curl -b cookies.txt \
   -H "Content-Type: application/json" \
-  -d '{"amount":1,"exp":30,"maxUsersPerKey":1}' \
+  -d '{"amount":1,"exp":30}' \
   http://157.254.192.134/api/licences/create
 ```
 
-Activate key from client app:
+Activate:
 
 ```bash
 curl -H "Content-Type: application/json" \
@@ -382,7 +339,7 @@ curl -H "Content-Type: application/json" \
   http://157.254.192.134/api/licences/activate
 ```
 
-Verify key from client app:
+Verify:
 
 ```bash
 curl -H "Content-Type: application/json" \
@@ -390,31 +347,9 @@ curl -H "Content-Type: application/json" \
   http://157.254.192.134/api/licences/verify
 ```
 
-## Status Codes
+## VPS Notes
 
-- `200`: Success, or session check completed with `success: false`
-- `400`: Missing or invalid request body
-- `401`: Admin endpoint has no valid token cookie
-- `403`: Licence inactive, expired, full, or not allowed
-- `404`: Licence/user not found
-- `500`: Server or database error
-
-## Important VPS Notes
-
-- Frontend should call relative paths such as `/api/auth/login`, not `http://localhost:3000`.
-- On VPS, `localhost` inside the browser means the user's computer, not the VPS.
+- Frontend should call `/api/...`, not `http://localhost:3000`.
 - Docker Compose creates MariaDB user `nutx` with password `bonus2548`.
-- Admin seed currently creates:
-
-```text
-Email: pepoth00@gmail.com
-Password: bonus2548
-```
-
-- The admin auth cookie is `httpOnly`; this is correct. Check login state by calling `/auth/me`.
-- If you later add HTTPS, set the production cookie to secure mode and update `CLIENT_ORIGIN`.
-
-## Known Issues to Review
-
-- `GET /licences/stats` still selects `hwid` in `latestKeys`, but the current Prisma schema uses the `LicenceHwid` relation instead of a direct `hwid` field. If this endpoint returns `500`, update the stats query to use `hwids`.
-- `POST /licences/verify` also still checks `licence.hwid`, while the newer schema stores HWIDs in `LicenceHwid`. If verify is required for production, update it to check the `hwids` relation.
+- Admin seed creates `pepoth00@gmail.com` with password `bonus2548`.
+- On HTTP, cookie `secure` should stay false. If you add HTTPS later, set secure cookie mode.

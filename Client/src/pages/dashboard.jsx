@@ -17,6 +17,10 @@ import StatusDonut from "../components/dashboard/StatusDonut"
 import ActivityFeed from "../components/dashboard/ActivityFeed"
 import TablePreview from "../components/dashboard/TablePreview"
 
+const hasBoundHwids = (license) => {
+  return !!license.hwid
+}
+
 const Dashboard = () => {
   const [licenses, setLicenses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -80,7 +84,7 @@ const Dashboard = () => {
           },
         ]
 
-        if (!license.hwid && license.updatedAt && license.updatedAt !== license.createdAt) {
+        if (!hasBoundHwids(license) && license.updatedAt && license.updatedAt !== license.createdAt) {
           entries.push({
             type: "reset",
             title: "Reset HWID",

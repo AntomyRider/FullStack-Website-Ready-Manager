@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { useLicensesStore } from "../../store/licensesStore"
-import { Trash2, RotateCcw, KeyRound, Search, CircleDot, FileDown, Download } from 'lucide-react'
-import SearchLicenses from "./search.licenses"
+import { Trash2, RotateCcw, KeyRound, Search, CircleDot, Download } from 'lucide-react'
 import CreateLicenses from "./create.licenses"
 import { deleteKey, resetKey, updateKey } from "../../api/licenses"
 import DownloadLicensesDialog from './DownloadLicensesDialog'
@@ -13,6 +12,10 @@ const StatCard = ({ label, value, color = "text-zinc-100" }) => (
     <p className={`text-xl font-medium ${color}`}>{value}</p>
   </div>
 )
+
+const getLicenseHwids = (license) => {
+  return license.hwid ? [license.hwid] : []
+}
 
 const TableLicenses = () => {
   const [search, setSearch] = useState("")
@@ -26,7 +29,7 @@ const TableLicenses = () => {
 
   const isFetching = useRef(false)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (isFetching.current) return
 
     try {
@@ -38,7 +41,7 @@ const TableLicenses = () => {
       isFetching.current = false
       setReloading(false)
     }
-  }
+  }, [fetchLicenses])
 
   useEffect(() => {
     loadData()
@@ -48,7 +51,7 @@ const TableLicenses = () => {
     }, 30000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [loadData])
 
   const handleDelete = async (id) => {
     try {
@@ -79,37 +82,12 @@ const TableLicenses = () => {
       console.error(error)
     }
   }
-  const downloadKeys = (data, filename = "keys.txt") => {
-    const blob = new Blob([data], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-
-    const a = document.createElement("a")
-    a.href = url
-    a.download = filename
-    a.click()
-
-    URL.revokeObjectURL(url)
-  }
-
-  const downloadUnbound = () => {
-    const text = unboundKeys.map(k => k.key).join("\n")
-    downloadKeys(text, "unbound-keys.txt")
-  }
-
-  const downloadBound = () => {
-    const text = boundKeys
-      .map(k => `${k.key},${k.hwid}`)
-      .join("\n")
-
-    downloadKeys(text, "bound-keys.csv")
-  }
-
   const filteredLicenses = licenses.filter((l) =>
     l.key.toLowerCase().includes(search.toLowerCase())
   )
 
-  const unboundKeys = licenses.filter((l) => !l.hwid || l.hwid === "")
-  const boundKeys = licenses.filter((l) => l.hwid && l.hwid !== "")
+  const unboundKeys = licenses.filter((l) => getLicenseHwids(l).length === 0)
+  const boundKeys = licenses.filter((l) => getLicenseHwids(l).length > 0)
   const activeCount = licenses.filter((l) => l.status === "Enable").length
   const disabledCount = licenses.length - activeCount
 
@@ -215,8 +193,9 @@ const TableLicenses = () => {
               ) : (
                 filteredLicenses.map((license) => {
                   const isEnabled = license.status === "Enable"
-                  const hwid = license.hwid
-                    ? license.hwid.length > 18 ? `${license.hwid.slice(0, 18)}…` : license.hwid
+                  const boundHwid = getLicenseHwids(license).join(", ")
+                  const hwid = boundHwid
+                    ? boundHwid.length > 18 ? `${boundHwid.slice(0, 18)}...` : boundHwid
                     : "N/A"
 
                   return (
@@ -254,13 +233,13 @@ const TableLicenses = () => {
 
 
                       <td className="px-5 py-4 text-xs text-zinc-600">
-                        {new Date(license.expireAt).toLocaleDateString("en-GB", {
+                        {license.expireAt ? new Date(license.expireAt).toLocaleDateString("en-GB", {
                           day: "2-digit", month: "short", year: "numeric"
-                        })}
+                        }) : "Never"}
                       </td>
 
                       <td className="px-5 py-4 text-xs text-zinc-600">
-                        {new Date(license.createAt).toLocaleDateString("en-GB", {
+                        {new Date(license.createdAt).toLocaleDateString("en-GB", {
                           day: "2-digit", month: "short", year: "numeric"
                         })}
                       </td>

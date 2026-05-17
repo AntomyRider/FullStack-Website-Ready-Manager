@@ -1,6 +1,10 @@
 import { KeyRound } from "lucide-react"
 import { formatDate } from "../../utils/formatters"
 
+const getLicenseHwids = (license) => {
+    return license.hwid || ""
+}
+
 const TablePreview = ({ licenses }) => (
     <div className="bg-zinc-950 border border-zinc-800/70 rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-zinc-800/70 flex items-center justify-between">
@@ -54,7 +58,7 @@ const TablePreview = ({ licenses }) => (
                                 </td>
 
                                 <td className="px-5 py-3 text-xs font-mono text-zinc-600 max-w-40 truncate">
-                                    {license.hwid || "N/A"}
+                                    {getLicenseHwids(license) || "N/A"}
                                 </td>
 
                                 <td className="px-5 py-3 text-xs text-zinc-500">

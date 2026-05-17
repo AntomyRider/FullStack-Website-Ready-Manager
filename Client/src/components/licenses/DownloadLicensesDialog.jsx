@@ -12,6 +12,10 @@ const DownloadLicensesDialog = ({
 
   if (!open) return null
 
+  const getLicenseHwids = (license) => {
+    return license.hwid || ""
+  }
+
   const downloadFile = (content, filename, mime) => {
     const blob = new Blob([content], { type: mime })
     const url = URL.createObjectURL(blob)
@@ -25,28 +29,25 @@ const DownloadLicensesDialog = ({
   }
 
   const handleDownload = () => {
-    let data = ""
-    let filename = ""
-
     const list = type === "unbound" ? unboundKeys : boundKeys
 
     if (format === "txt") {
-      data = list.map(k => type === "unbound"
+      const data = list.map(k => type === "unbound"
         ? k.key
-        : `${k.key} | ${k.hwid}`
+        : `${k.key} | ${getLicenseHwids(k)}`
       ).join("\n")
 
-      filename = `${type}-keys.txt`
+      const filename = `${type}-keys.txt`
 
       downloadFile(data, filename, "text/plain")
     }
 
     if (format === "csv") {
-      data = type === "unbound"
+      const data = type === "unbound"
         ? "key\n" + list.map(k => k.key).join("\n")
-        : "key,hwid\n" + list.map(k => `${k.key},${k.hwid}`).join("\n")
+        : "key,hwid\n" + list.map(k => `${k.key},${getLicenseHwids(k)}`).join("\n")
 
-      filename = `${type}-keys.csv`
+      const filename = `${type}-keys.csv`
 
       downloadFile(data, filename, "text/csv")
     }
