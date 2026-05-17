@@ -13,7 +13,8 @@ exports.verify = async (req, res) => {
 
 
     const licence = await prisma.licence.findUnique({
-      where: { key }
+      where: { key },
+      include: { hwids: true }
     })
 
     if (!licence) {
@@ -47,33 +48,21 @@ exports.verify = async (req, res) => {
     }
 
     // ✅ เช็ค HWID mismatch
-    if (licence.hwid && licence.hwid !== hwid) {
+    const boundHwid = licence.hwids.find((item) => item.hwid === hwid)
+
+    if (!boundHwid) {
       return res.status(403).json({
         success: false,
-        message: "HWID mismatch"
+        message: "HWID not bound"
       })
     }
-
-    if (!licence.hwid) {
-    return res.status(403).json({
-      success: false,
-      message: "HWID not bound"
-    })
-  }
-
-    console.log({
-      key,
-      hwid,
-      dbHwid: licence.hwid,
-      status: licence.status
-    })
 
     return res.status(200).json({
       success: true,
       message: "Verified",
       data: {
         key: licence.key,
-        hwid: licence.hwid || hwid,
+        hwid: boundHwid.hwid,
         status: licence.status
       }
     })

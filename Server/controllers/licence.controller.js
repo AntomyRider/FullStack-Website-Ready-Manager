@@ -199,7 +199,7 @@ exports.getDashboardStats = async (req, res) => {
       select: {
         id: true,
         key: true,
-        hwid: true,
+        hwids: { select: { hwid: true, createdAt: true } },
         status: true,
         expireAt: true,
         activatedAt: true,
