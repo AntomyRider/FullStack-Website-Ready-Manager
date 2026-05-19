@@ -16,14 +16,28 @@ model Licence {
   key         String    @unique
   hwid        String?
   status      StatusKey @default(Enable)
+  expDays     Int?
   expireAt    DateTime?
   activatedAt DateTime?
+
+  historyActivations HistoryKeyActivated[]
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([key])
   @@index([hwid])
 }
+
+model HistoryKeyActivated {
+  id          Int       @id @default(autoincrement())
+  licenceId   Int
+  activatedAt DateTime  @default(now())
+  licence     Licence   @relation(fields: [licenceId], references: [id])
+  @@index([licenceId])
+  @@index([activatedAt])
+}
+
 
 model User {
   id        Int      @id @default(autoincrement())

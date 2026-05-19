@@ -8,15 +8,9 @@ const {
   activateKey,
   getDashboardStats,
   resetKey,
-  updateKey
+  updateKey,
+  deleteAllKeys
 } = require("../controllers/licence.controller");
-
-// All licence routes are protected (admin only)
-// router.post("/licence", protect, createKey);
-// router.get("/licences", protect, listKey);
-// router.delete("/licence/:id", protect, deleteKey);
-// router.post("/licences/activate", activateKey);
-// router.get("/licences/stats", protect, getDashboardStats);
 
 router.post("/licences/create", protect, createKey);
 router.get("/licences/list", protect, listKey);
@@ -25,5 +19,6 @@ router.post("/licences/activate", activateKey);
 router.get("/licences/stats", protect, getDashboardStats);
 router.post("/licences/resetkey", protect, resetKey);
 router.post('/licences/update/:id', protect, updateKey)
+router.delete('/licences/delete', protect, deleteAllKeys)
 
 module.exports = router;

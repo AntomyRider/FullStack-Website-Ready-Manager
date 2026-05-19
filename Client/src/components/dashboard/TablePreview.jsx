@@ -18,7 +18,7 @@ const TablePreview = ({ licenses }) => (
 
                 <thead className="sticky top-0 bg-zinc-950 z-10">
                     <tr>
-                        {["ID", "Key", "Status", "HWID", "Expire", "Created"].map((item) => (
+                        {["ID", "Key", "Status", "HWID", "Expire", "Days","Created"].map((item) => (
                             <th
                                 key={item}
                                 className="px-5 py-3 text-left text-[11px] uppercase tracking-widest text-zinc-600 font-medium"
@@ -63,6 +63,9 @@ const TablePreview = ({ licenses }) => (
 
                                 <td className="px-5 py-3 text-xs text-zinc-500">
                                     {formatDate(license.expireAt)}
+                                </td>
+                                <td className="px-5 py-3 text-xs text-zinc-500">
+                                    {license.expDays}
                                 </td>
 
                                 <td className="px-5 py-3 text-xs text-zinc-500">

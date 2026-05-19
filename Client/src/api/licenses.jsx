@@ -67,3 +67,12 @@ export const updateKey = async (id, status) => {
         console.error(error)
     }
 }
+
+export const deleteAllkeys = async () => {
+    try {
+        const res = await licenseApi.delete("/delete")
+        return res.data
+    } catch (error) {
+        console.log(error)
+    }
+}

@@ -29,7 +29,9 @@ exports.createKey = async (req, res) => {
       data: keys.map((key) => ({
         key,
         status: "Enable",
-        expireAt,
+        expDays,
+        activatedAt: null,
+        expireAt: null,
       })),
     });
 
@@ -47,9 +49,7 @@ exports.createKey = async (req, res) => {
 
 exports.listKey = async (req, res) => {
   try {
-    const licences = await prisma.licence.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+    const licences = await prisma.licence.findMany();
 
     return res.status(200).json(licences);
   } catch (error) {
@@ -95,11 +95,15 @@ exports.activateKey = async (req, res) => {
     }
 
     if (licence.status !== "Enable") {
-      return res.status(403).json({ success: false, message: "Licence inactive" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Licence inactive" });
     }
 
     if (licence.expireAt && licence.expireAt < new Date()) {
-      return res.status(403).json({ success: false, message: "Licence expired" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Licence expired" });
     }
 
     if (licence.hwid && licence.hwid !== hwid) {
@@ -107,11 +111,16 @@ exports.activateKey = async (req, res) => {
     }
 
     if (!licence.hwid) {
+      const now = new Date();
       await prisma.licence.update({
         where: { key },
         data: {
           hwid,
-          activatedAt: licence.activatedAt || new Date(),
+          activatedAt: now,
+          expireAt:
+            licence.expDays > 0
+              ? new Date(now.getTime() + licence.expDays * 24 * 60 * 60 * 1000)
+              : null,
         },
       });
     }
@@ -125,15 +134,18 @@ exports.activateKey = async (req, res) => {
 exports.getDashboardStats = async (req, res) => {
   try {
     const totalKeys = await prisma.licence.count();
-    const enableKeys = await prisma.licence.count({ where: { status: "Enable" } });
-    const disableKeys = await prisma.licence.count({ where: { status: "Disable" } });
-    const activatedKeys = await prisma.licence.count({ where: { hwid: { not: null } } });
+    const enableKeys = await prisma.licence.count({
+      where: { status: "Enable" },
+    });
+    const disableKeys = await prisma.licence.count({
+      where: { status: "Disable" },
+    });
+    const activatedKeys = await prisma.licence.count({
+      where: { hwid: { not: null } },
+    });
     const expiredKeys = await prisma.licence.count({
       where: {
-        AND: [
-          { expireAt: { not: null } },
-          { expireAt: { lt: new Date() } },
-        ],
+        AND: [{ expireAt: { not: null } }, { expireAt: { lt: new Date() } }],
       },
     });
     const unusedKeys = await prisma.licence.count({ where: { hwid: null } });
@@ -190,13 +202,17 @@ exports.resetKey = async (req, res) => {
     const { key } = req.body;
 
     if (!key) {
-      return res.status(400).json({ success: false, message: "Key is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Key is required" });
     }
 
     const licence = await prisma.licence.findUnique({ where: { key } });
 
     if (!licence) {
-      return res.status(404).json({ success: false, message: "Licence not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Licence not found" });
     }
 
     await prisma.licence.update({
@@ -221,11 +237,15 @@ exports.updateKey = async (req, res) => {
     const { status } = req.body;
 
     if (!id) {
-      return res.status(400).json({ success: false, message: "ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "ID is required" });
     }
 
     if (!status) {
-      return res.status(400).json({ success: false, message: "Status is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Status is required" });
     }
 
     const update = await prisma.licence.update({
@@ -240,5 +260,23 @@ exports.updateKey = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.deleteAllKeys = async (req, res) => {
+  try {
+    await prisma.historyKeyActivated.deleteMany({});
+    const deleted = await prisma.licence.deleteMany();
+
+    return res.status(200).json({
+      success: true,
+      message: `License ${deleted.key} deleted successfully`,
+    });
+  } catch (error) {
+    console.error("Error deleting license:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
