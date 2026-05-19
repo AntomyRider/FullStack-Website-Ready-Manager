@@ -7,6 +7,7 @@ const authRouter = require("./routes/auth.routes")
 const userRouter = require("./routes/user.routes") 
 const adminRouter = require("./routes/admin.routes") 
 const historyRouter = require("./routes/history.routes") 
+const serverRouter = require("./routes/server.routes")
 
 const PORT = process.env.PORT
 
@@ -23,6 +24,7 @@ app.use("/api", authRouter);
 app.use("/api", userRouter);
 app.use("/api", adminRouter);
 app.use("/api", historyRouter);
+app.use("/api", serverRouter);
 
 app.listen(PORT, () => {
     console.log(`🚀 License server running on http://localhost:${PORT}`)

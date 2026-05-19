@@ -1,33 +1,112 @@
-// TableLicenses.jsx (รวม Filter By Days)
+// TableLicenses.jsx (Redesigned — Tailwind)
 import { useCallback, useEffect, useState, useRef } from "react"
 import { useLicensesStore } from "../../store/licensesStore"
-import { Trash2, RotateCcw, KeyRound, Search, CircleDot, Download } from 'lucide-react'
+import { Trash2, RotateCcw, KeyRound, Search, Download } from "lucide-react"
 import CreateLicenses from "./create.licenses"
 import { deleteAllkeys, deleteKey, resetKey, updateKey } from "../../api/licenses"
-import DownloadLicensesDialog from './DownloadLicensesDialog'
+import DownloadLicensesDialog from "./DownloadLicensesDialog"
 import FilterLicenses from "./filter.licenses"
 
-const StatCard = ({ label, value, color = "text-zinc-100" }) => (
-  <div className="flex-1 bg-zinc-950 border border-zinc-800/60 rounded-xl px-4 py-3">
-    <p className="text-[11px] font-medium tracking-widest uppercase text-zinc-600 mb-1">{label}</p>
-    <p className={`text-xl font-medium ${color}`}>{value}</p>
+// ────────────────────────────────────────────────────────────
+// Sub-components
+// ────────────────────────────────────────────────────────────
+
+const StatCard = ({ label, value, valueClass = "text-zinc-100" }) => (
+  <div className="flex-1 bg-zinc-900/60 border border-zinc-800/50 rounded-xl px-5 py-3.5 flex flex-col gap-1">
+    <p className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-zinc-600">{label}</p>
+    <p className={`text-2xl font-medium tabular-nums ${valueClass}`}>{value}</p>
   </div>
 )
 
+const StatusBadge = ({ status, onClick }) => {
+  const on = status === "Enable"
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium border transition-colors ${
+        on
+          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/18"
+          : "bg-red-500/10 text-red-400 border-red-500/25 hover:bg-red-500/18"
+      }`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${on ? "bg-emerald-400" : "bg-red-400"}`} />
+      {status}
+    </button>
+  )
+}
+
+const DaysCell = ({ expDays, expireAt }) => {
+  const daysLeft = expireAt
+    ? Math.ceil((new Date(expireAt) - new Date()) / 86_400_000)
+    : null
+  const pct =
+    daysLeft != null ? Math.min(100, Math.max(0, Math.round((daysLeft / expDays) * 100))) : null
+
+  const barColor =
+    pct == null ? "" : pct < 15 ? "bg-red-500" : pct < 40 ? "bg-amber-400" : "bg-emerald-400"
+  const textColor =
+    daysLeft == null ? "text-zinc-600"
+    : daysLeft < 0 ? "text-red-400"
+    : pct < 15 ? "text-red-400"
+    : pct < 40 ? "text-amber-400"
+    : "text-zinc-400"
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span className={`text-[12px] tabular-nums ${textColor}`}>
+        {daysLeft == null ? "—" : daysLeft < 0 ? "Expired" : `${daysLeft}d`}
+      </span>
+      {pct != null && (
+        <div className="w-12 h-[3px] bg-zinc-800 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+const ActionBtn = ({ onClick, icon: Icon, variant = "danger", label }) => {
+  const cls =
+    variant === "danger"
+      ? "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 hover:border-red-500/35"
+      : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/35"
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className={`flex items-center justify-center w-[30px] h-[30px] rounded-lg border transition-all duration-150 ${cls}`}
+    >
+      <Icon size={13} />
+    </button>
+  )
+}
+
+// ────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────
+
 const getLicenseHwids = (license) => (license.hwid ? [license.hwid] : [])
+
+const fmtDate = (d) =>
+  d
+    ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : "—"
+
+// ────────────────────────────────────────────────────────────
+// Main component
+// ────────────────────────────────────────────────────────────
 
 const TableLicenses = () => {
   const [search, setSearch] = useState("")
   const [selectedDay, setSelectedDay] = useState("all")
-
-  const licenses = useLicensesStore((state) => state.licenses)
-  const fetchLicenses = useLicensesStore((state) => state.fetchLicenses)
-  const loading = useLicensesStore((state) => state.loading)
-  const availableDays = useLicensesStore((state) => state.availableDays)
-
-  const [openDownload, setOpenDownload] = useState(false)
   const [open, setOpen] = useState(false)
+  const [openDownload, setOpenDownload] = useState(false)
   const [reloading, setReloading] = useState(false)
+
+  const licenses = useLicensesStore((s) => s.licenses)
+  const fetchLicenses = useLicensesStore((s) => s.fetchLicenses)
+  const loading = useLicensesStore((s) => s.loading)
+  const availableDays = useLicensesStore((s) => s.availableDays)
 
   const isFetching = useRef(false)
 
@@ -45,26 +124,26 @@ const TableLicenses = () => {
 
   useEffect(() => {
     loadData()
-    const interval = setInterval(() => loadData(), 30000)
-    return () => clearInterval(interval)
+    const id = setInterval(loadData, 30_000)
+    return () => clearInterval(id)
   }, [loadData])
 
   // Actions
   const handleDelete = async (id) => {
-    try { const res = await deleteKey(id); if (res.success) await fetchLicenses() } catch (e) { console.error(e) }
+    try { const r = await deleteKey(id); if (r.success) await fetchLicenses() } catch (e) { console.error(e) }
   }
   const handleReset = async (key) => {
-    try { const res = await resetKey(key); if (res.success) await fetchLicenses() } catch (e) { console.error(e) }
+    try { const r = await resetKey(key); if (r.success) await fetchLicenses() } catch (e) { console.error(e) }
   }
   const handleUpdate = async (id, status) => {
-    const newStatus = status === "Enable" ? "Disable" : "Enable"
-    try { const res = await updateKey(id, newStatus); if (res?.success) await fetchLicenses() } catch (e) { console.error(e) }
+    const next = status === "Enable" ? "Disable" : "Enable"
+    try { const r = await updateKey(id, next); if (r?.success) await fetchLicenses() } catch (e) { console.error(e) }
   }
-  const handelDeleteAll = async () => {
-    try { const res = await deleteAllkeys(); if (res?.success) await fetchLicenses() } catch (e) { console.log(e) }
+  const handleDeleteAll = async () => {
+    try { const r = await deleteAllkeys(); if (r?.success) await fetchLicenses() } catch (e) { console.error(e) }
   }
 
-  // Filtered licenses by search + days
+  // Derived data
   const filteredLicenses = useLicensesStore
     .getState()
     .filterByDays(selectedDay)
@@ -77,28 +156,27 @@ const TableLicenses = () => {
 
   return (
     <div className="pr-5 space-y-4">
-      {/* Stat Cards */}
+
+      {/* ── Stat cards ───────────────────────────────────── */}
       <div className="flex gap-3">
         <StatCard label="Total Keys" value={licenses.length} />
-        <StatCard label="Active" value={activeCount} color="text-emerald-400" />
-        <StatCard label="Disabled" value={disabledCount} color="text-red-400" />
+        <StatCard label="Active" value={activeCount} valueClass="text-emerald-400" />
+        <StatCard label="Disabled" value={disabledCount} valueClass="text-red-400" />
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-2 flex-1 max-w-lg">
-          {/* Search */}
-          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-3 h-10 flex-1">
-            <Search size={15} className="text-zinc-600 shrink-0" />
+      {/* ── Toolbar ──────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {/* Left: search + filter */}
+        <div className="flex gap-2 flex-1 min-w-0 max-w-lg">
+          <div className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800/60 rounded-xl px-3 h-9 flex-1 min-w-0">
+            <Search size={14} className="text-zinc-600 shrink-0" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search license key..."
-              className="bg-transparent border-none outline-none text-zinc-300 text-sm placeholder:text-zinc-600 w-full"
+              placeholder="Search license key…"
+              className="bg-transparent outline-none text-zinc-300 text-[13px] placeholder:text-zinc-600 w-full"
             />
           </div>
-
-          {/* Filter By Days */}
           <FilterLicenses
             availableDays={availableDays}
             selectedDay={selectedDay}
@@ -106,83 +184,160 @@ const TableLicenses = () => {
           />
         </div>
 
-        {/* Buttons */}
-        <div className="flex gap-2">
-          <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg flex justify-center hover:bg-red-500/20">
-            <Trash2 onClick={handelDeleteAll} size={20} className="text-red-500" />
-          </div>
-          <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex justify-center">
-            <RotateCcw size={20} className={`transition-all ${reloading ? "text-emerald-400 animate-spin [animation-direction:reverse]" : "text-zinc-600"}`} />
-          </div>
-          <button onClick={() => setOpenDownload(true)} className="flex items-center gap-2 px-3 h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-            <Download size={16} /> Export
+        {/* Right: action buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleDeleteAll}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/18 transition-colors"
+            aria-label="Delete all keys"
+          >
+            <Trash2 size={15} />
           </button>
-          <DownloadLicensesDialog open={openDownload} setOpen={setOpenDownload} unboundKeys={unboundKeys} boundKeys={boundKeys} />
-          <button onClick={() => setOpen(true)} className="group relative h-10 px-4 rounded-xl overflow-hidden border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-400 transition-all duration-300 flex items-center gap-2 text-sm font-medium">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-400/10 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-all duration-500" />
-            <KeyRound size={15} />
-            <span className="relative tracking-wide">NEW KEY</span>
+
+          <button
+            onClick={loadData}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-zinc-900/70 border border-zinc-800/60 text-zinc-500 hover:text-zinc-300 transition-colors"
+            aria-label="Reload"
+          >
+            <RotateCcw
+              size={15}
+              className={`transition-all duration-300 ${reloading ? "animate-spin [animation-direction:reverse] text-emerald-400" : ""}`}
+            />
+          </button>
+
+          <button
+            onClick={() => setOpenDownload(true)}
+            className="flex items-center gap-2 h-9 px-3.5 rounded-xl bg-zinc-900/70 border border-zinc-800/60 text-zinc-300 text-[13px] hover:bg-zinc-800/60 transition-colors"
+          >
+            <Download size={14} /> Export
+          </button>
+          <DownloadLicensesDialog
+            open={openDownload}
+            setOpen={setOpenDownload}
+            unboundKeys={unboundKeys}
+            boundKeys={boundKeys}
+          />
+
+          <button
+            onClick={() => setOpen(true)}
+            className="relative flex items-center gap-2 h-9 px-4 rounded-xl overflow-hidden border border-emerald-500/25 bg-emerald-500/10 hover:bg-emerald-500/16 text-emerald-400 text-[13px] font-medium tracking-wide transition-colors"
+          >
+            <KeyRound size={14} />
+            New Key
           </button>
           <CreateLicenses open={open} setOpen={setOpen} fetchLicenses={fetchLicenses} />
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-zinc-950 border border-zinc-800/60 rounded-2xl overflow-hidden">
-        <div className="max-h-[820px] overflow-y-auto">
-          <table className="w-full">
+      {/* ── Table ────────────────────────────────────────── */}
+      <div className="border border-zinc-800/50 rounded-2xl overflow-hidden">
+        <div className="max-h-[820px] overflow-y-auto overflow-x-auto">
+          <table className="w-full border-collapse text-[13px]" style={{ tableLayout: "fixed" }}>
             <colgroup>
-              <col style={{ width: "60px" }} />
-              <col style={{ width: "220px" }} />
-              <col style={{ width: "220px" }} />
-              <col style={{ width: "110px" }} />
-              <col style={{ width: "160px" }} />
-              <col style={{ width: "80px" }} />
-              <col style={{ width: "160px" }} />
-              <col style={{ width: "90px" }} />
+              <col style={{ width: 52 }} />
+              <col style={{ width: 210 }} />
+              <col style={{ width: 160 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 88 }} />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 80 }} />
             </colgroup>
-            <thead className="sticky top-0 z-10 bg-zinc-950 border-b border-zinc-800/60">
-              {["ID", "Key", "HWID", "Status", "Expires At", "Days", "Created At", "Action"].map((h) => (
-                <th key={h} className="px-5 py-3.5 text-left text-[11px] font-medium tracking-widest uppercase text-zinc-600">{h}</th>
-              ))}
+
+            {/* Head */}
+            <thead className="sticky top-0 z-10 bg-zinc-950">
+              <tr className="border-b border-zinc-800/50">
+                {["ID", "Key", "HWID", "Status", "Expires", "Days", "Created", "Actions"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-[10.5px] font-medium tracking-[0.1em] uppercase text-zinc-600 whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
             </thead>
+
+            {/* Body */}
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-12 text-center text-zinc-600 text-sm">
+                  <td colSpan={8} className="px-4 py-14 text-center text-zinc-600 text-[13px]">
                     <div className="flex items-center justify-center gap-2">
-                      <RotateCcw size={15} className="animate-spin" />Loading...
+                      <RotateCcw size={14} className="animate-spin" /> Loading…
                     </div>
                   </td>
                 </tr>
               ) : filteredLicenses.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-12 text-center text-zinc-600 text-sm">No licenses found</td>
+                  <td colSpan={8} className="px-4 py-14 text-center text-zinc-600 text-[13px]">
+                    No licenses found
+                  </td>
                 </tr>
               ) : (
                 filteredLicenses.map((license) => {
-                  const isEnabled = license.status === "Enable"
-                  const boundHwid = getLicenseHwids(license).join(", ")
-                  const hwid = boundHwid ? (boundHwid.length > 18 ? `${boundHwid.slice(0, 18)}...` : boundHwid) : "N/A"
+                  const hwids = getLicenseHwids(license)
+                  const raw = hwids.join(", ")
+                  const hwid = raw ? (raw.length > 18 ? `${raw.slice(0, 18)}…` : raw) : "—"
 
                   return (
-                    <tr key={license.id} className="border-t border-zinc-800/50 hover:bg-zinc-900/60 transition-colors group">
-                      <td className="px-5 py-4 text-xs text-zinc-600 font-medium">#{license.id}</td>
-                      <td className="px-5 py-4 font-mono text-[13px] text-zinc-300 tracking-wide">{license.key}</td>
-                      <td className="px-5 py-4 font-mono text-xs text-zinc-600">{hwid}</td>
-                      <td className="px-5 py-4">
-                        <button onClick={() => handleUpdate(license.id, license.status)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${isEnabled ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
-                          <CircleDot size={8} /> {license.status}
-                        </button>
+                    <tr
+                      key={license.id}
+                      className="border-t border-zinc-800/40 hover:bg-zinc-900/50 transition-colors group"
+                    >
+                      {/* ID */}
+                      <td className="px-4 py-3.5 text-[12px] text-zinc-600 font-medium">
+                        #{license.id}
                       </td>
-                      <td className="px-5 py-4 text-xs text-zinc-600">{license.expireAt ? new Date(license.expireAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "N/A"}</td>
-                      <td className="px-5 py-4 text-xs text-zinc-600">{license.expDays}</td>
-                      <td className="px-5 py-4 text-xs text-zinc-600">{new Date(license.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      <td className="px-5 py-4">
+
+                      {/* Key */}
+                      <td className="px-4 py-3.5 font-mono text-[12.5px] text-zinc-300 tracking-wide truncate">
+                        {license.key}
+                      </td>
+
+                      {/* HWID */}
+                      <td className="px-4 py-3.5 font-mono text-[11.5px] text-zinc-600 truncate">
+                        {hwid}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3.5">
+                        <StatusBadge
+                          status={license.status}
+                          onClick={() => handleUpdate(license.id, license.status)}
+                        />
+                      </td>
+
+                      {/* Expires */}
+                      <td className="px-4 py-3.5 text-[12px] text-zinc-500">
+                        {fmtDate(license.expireAt)}
+                      </td>
+
+                      {/* Days */}
+                      <td className="px-4 py-3.5 text-zinc-500">
+                        {license.expDays} Days
+                      </td>
+
+                      {/* Created */}
+                      <td className="px-4 py-3.5 text-[12px] text-zinc-500">
+                        {fmtDate(license.createdAt)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5">
-                          <button onClick={() => handleDelete(license.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 transition-all duration-200" aria-label={`Delete license ${license.id}`}><Trash2 size={14} /></button>
-                          <button onClick={() => handleReset(license.key)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 transition-all duration-200" aria-label={`Reset HWID for license ${license.id}`}><RotateCcw size={14} /></button>
+                          <ActionBtn
+                            onClick={() => handleDelete(license.id)}
+                            icon={Trash2}
+                            variant="danger"
+                            label={`Delete license ${license.id}`}
+                          />
+                          <ActionBtn
+                            onClick={() => handleReset(license.key)}
+                            icon={RotateCcw}
+                            variant="success"
+                            label={`Reset HWID for license ${license.id}`}
+                          />
                         </div>
                       </td>
                     </tr>

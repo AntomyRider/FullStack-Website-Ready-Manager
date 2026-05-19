@@ -84,7 +84,8 @@ const Dashboard = () => {
           },
         ]
 
-        if (!hasBoundHwids(license) && license.updatedAt && license.updatedAt !== license.createdAt) {
+        // Reset HWID — hwid ต้องเคยมี (activatedAt มีค่า) แต่ตอนนี้ไม่มีแล้ว
+        if (!license.hwid && license.activatedAt) {
           entries.push({
             type: "reset",
             title: "Reset HWID",
@@ -95,13 +96,14 @@ const Dashboard = () => {
           })
         }
 
-        if (license.status === "Disable") {
+        // Disabled — แยกออกจาก reset ชัดเจน
+        if (license.status === "Disable" && license.updatedAt !== license.createdAt) {
           entries.push({
             type: "disabled",
-            title: "Delete key / disabled",
+            title: "Key disabled",
             key: license.key,
-            date: license.updatedAt || license.createdAt,
-            icon: Trash2,
+            date: license.updatedAt,
+            icon: Ban,
             tone: "bg-red-500/10 text-red-400 border-red-500/20",
           })
         }

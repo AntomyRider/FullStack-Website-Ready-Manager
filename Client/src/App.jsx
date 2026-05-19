@@ -5,6 +5,7 @@ import Dashboard from "./pages/dashboard"
 import Lincenses from "./pages/licenses"
 import Login from "./pages/login"
 import ProtectedRoute from "./middlewares/protectedRoute"
+import Server from "./pages/server"
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/" element={<Main />}>
             <Route index element={<Dashboard />} />
             <Route path="licenses" element={<Lincenses />} />
+            <Route path="server" element={<Server />} />
           </Route>
         </Route>
 

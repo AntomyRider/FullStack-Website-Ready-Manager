@@ -110,8 +110,10 @@ exports.activateKey = async (req, res) => {
       return res.status(403).json({ success: false, message: "HWID mismatch" });
     }
 
+    const now = new Date();
+
     if (!licence.hwid) {
-      const now = new Date();
+      // first activation — update licence
       await prisma.licence.update({
         where: { key },
         data: {
@@ -124,6 +126,14 @@ exports.activateKey = async (req, res) => {
         },
       });
     }
+
+    // ✅ เพิ่มบรรทัดนี้ — บันทึกทุกครั้งที่มีการ activate (ทั้ง first และ re-use)
+    await prisma.historyKeyActivated.create({
+      data: {
+        licenceId: licence.id,
+        activatedAt: now,
+      },
+    });
 
     return res.status(200).json({ success: true, message: "Activated" });
   } catch (error) {
