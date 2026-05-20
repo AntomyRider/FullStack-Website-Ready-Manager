@@ -20,5 +20,7 @@ router.get("/licences/stats", protect, getDashboardStats);
 router.post("/licences/resetkey", protect, resetKey);
 router.post('/licences/update/:id', protect, updateKey)
 router.delete('/licences/delete', protect, deleteAllKeys)
+router.post('/licences/claim', claimKey)
+
 
 module.exports = router;

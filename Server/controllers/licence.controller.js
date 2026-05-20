@@ -290,3 +290,31 @@ exports.deleteAllKeys = async (req, res) => {
     });
   }
 };
+
+exports.claimKey = async (req, res) => {
+  try {
+    const { key } = req.body;
+
+    const claim = await prisma.licence.findUnique({
+      where: { key },
+    });
+    if (!claim) {
+      return res.status(404).json({
+        success: false,
+        message: "Key not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Key valid",
+    });
+
+  } catch (error) {
+    console.error("Error checking license:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

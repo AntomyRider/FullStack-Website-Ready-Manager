@@ -41,6 +41,18 @@ services:
     networks:
       - app_network
 
+  bot:
+    build:
+      context: ./Bot
+    container_name: licence_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - server
+    networks:
+      - app_network
+
   client:
     build:
       context: ./Client
