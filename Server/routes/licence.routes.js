@@ -9,7 +9,8 @@ const {
   getDashboardStats,
   resetKey,
   updateKey,
-  deleteAllKeys
+  deleteAllKeys,
+  claimKey
 } = require("../controllers/licence.controller");
 
 router.post("/licences/create", protect, createKey);
