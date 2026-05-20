@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const { 
   Client, GatewayIntentBits, Partials, EmbedBuilder, 
   ActionRowBuilder, ButtonBuilder, ButtonStyle, 
@@ -15,7 +17,11 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message],
 });
 
-const { TOKEN, API_URL, API_KEY_HEADER, ROLE_ID } = require('./config');
+const TOKEN = process.env.TOKEN;
+const API_URL = process.env.API_URL;
+const API_KEY_HEADER = process.env.API_KEY_HEADER;
+const ROLE_ID = process.env.ROLE_ID;
+
 const axios = require('axios');
 
 const VERIFY_CHANNEL_ID = '1506665860528607273';
