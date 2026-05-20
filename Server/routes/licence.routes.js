@@ -10,7 +10,8 @@ const {
   resetKey,
   updateKey,
   deleteAllKeys,
-  claimKey
+  claimKey,
+  resetHwid
 } = require("../controllers/licence.controller");
 
 router.post("/licences/create", protect, createKey);
@@ -22,6 +23,7 @@ router.post("/licences/resetkey", protect, resetKey);
 router.post('/licences/update/:id', protect, updateKey)
 router.delete('/licences/delete', protect, deleteAllKeys)
 router.post('/licences/claim', claimKey)
+router.post('/licences/reset-hwid', resetHwid)
 
 
 module.exports = router;

@@ -12,18 +12,21 @@ enum StatusKey {
 }
 
 model Licence {
-  id          Int       @id @default(autoincrement())
-  key         String    @unique
-  hwid        String?
-  status      StatusKey @default(Enable)
-  expDays     Int?
-  expireAt    DateTime?
-  activatedAt DateTime?
+  id                 Int                    @id @default(autoincrement())
+  key                String                 @unique
+  hwid               String?
+  status             StatusKey              @default(Enable)
+  expDays            Int?
+  expireAt           DateTime?
+  activatedAt        DateTime?
+
+  resetAt            DateTime?
+  resetCooldownAt    DateTime?
+  resetCount         Int      @default(0)
 
   historyActivations HistoryKeyActivated[]
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   @@index([key])
   @@index([hwid])
@@ -33,16 +36,24 @@ model HistoryKeyActivated {
   id          Int       @id @default(autoincrement())
   licenceId   Int
   activatedAt DateTime  @default(now())
-  licence     Licence   @relation(fields: [licenceId], references: [id])
+  licence     Licence  @relation(fields: [licenceId], references: [id])
   @@index([licenceId])
   @@index([activatedAt])
 }
 
+model Claim {
+  id        Int       @id @default(autoincrement())
+  key       String    @unique
+  discordId String
+  claimedAt DateTime  @default(now())
+
+  @@index([discordId])
+}
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
   password  String
-  role      String   @default("admin")
-  createdAt DateTime @default(now())
+  role      String    @default("admin")
+  createdAt DateTime  @default(now())
 }

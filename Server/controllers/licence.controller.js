@@ -15,6 +15,16 @@ function generateKey() {
   return key;
 }
 
+const ERROR_CODES = {
+  MISSING_FIELDS:   "MISSING_FIELDS",
+  KEY_NOT_FOUND:    "KEY_NOT_FOUND",
+  KEY_NOT_CLAIMED:  "KEY_NOT_CLAIMED",
+  NOT_OWNER:        "NOT_OWNER",
+  COOLDOWN_ACTIVE:  "COOLDOWN_ACTIVE",
+};
+
+const ONE_DAY = 24 * 60 * 60 * 1000;
+
 exports.createKey = async (req, res) => {
   try {
     const amount = parseInt(req.body.amount) || 1;
@@ -293,25 +303,142 @@ exports.deleteAllKeys = async (req, res) => {
 
 exports.claimKey = async (req, res) => {
   try {
-    const { key } = req.body;
+    const { key, discordId } = req.body;
 
-    const claim = await prisma.licence.findUnique({
+    if (!key || !discordId) {
+      return res.status(400).json({
+        success: false,
+        message: "key or discordId missing",
+      });
+    }
+
+    const licence = await prisma.licence.findUnique({
       where: { key },
     });
-    if (!claim) {
+
+    if (!licence) {
       return res.status(404).json({
         success: false,
         message: "Key not found",
       });
     }
 
+    // เช็คว่าเคย claim แล้วหรือยัง
+    const existingClaim = await prisma.claim.findFirst({
+      where: {
+        key,
+      },
+    });
+
+    if (existingClaim) {
+      return res.status(409).json({
+        success: false,
+        message: "Key already claimed",
+      });
+    }
+
+    // สร้าง claim
+    await prisma.claim.create({
+      data: {
+        key,
+        discordId,
+      },
+    });
+
     return res.status(200).json({
       success: true,
-      message: "Key valid",
+      message: "Key claimed successfully",
+    });
+  } catch (error) {
+    console.error("Error checking license:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
+// Error codes constants
+
+
+exports.resetHwid = async (req, res) => {
+  try {
+    const { key, discordId } = req.body;
+
+    if (!key || !discordId) {
+      return res.status(400).json({
+        success: false,
+        code:    ERROR_CODES.MISSING_FIELDS,
+        message: "Missing required fields: key and discordId are required",
+      });
+    }
+
+    const licence = await prisma.licence.findUnique({ where: { key } });
+
+    if (!licence) {
+      return res.status(404).json({
+        success: false,
+        code:    ERROR_CODES.KEY_NOT_FOUND,
+        message: `Key not found: "${key}" does not exist in the system`,
+      });
+    }
+
+    const claim = await prisma.claim.findFirst({ where: { key } });
+
+    if (!claim) {
+      return res.status(403).json({
+        success: false,
+        code:    ERROR_CODES.KEY_NOT_CLAIMED,
+        message: "Key has not been claimed yet — please claim this key before resetting HWID",
+      });
+    }
+
+    if (claim.discordId !== discordId) {
+      return res.status(403).json({
+        success: false,
+        code:    ERROR_CODES.NOT_OWNER,
+        message: `Not owner — this key belongs to a different Discord account`,
+      });
+    }
+
+    if (licence.resetCooldownAt) {
+      const diff      = Date.now() - new Date(licence.resetCooldownAt).getTime();
+      const remaining = ONE_DAY - diff;
+
+      if (remaining > 0) {
+        const hoursLeft   = Math.floor(remaining / 3600000);
+        const minutesLeft = Math.ceil((remaining % 3600000) / 60000);
+
+        return res.status(429).json({
+          success:          false,
+          code:             ERROR_CODES.COOLDOWN_ACTIVE,
+          message:          `Cooldown active — please wait ${hoursLeft}h ${minutesLeft}m before resetting again`,
+          cooldown: {
+            remainingMs:    remaining,
+            availableAt:    new Date(new Date(licence.resetCooldownAt).getTime() + ONE_DAY),
+          },
+        });
+      }
+    }
+
+    await prisma.licence.update({
+      where: { key },
+      data:  {
+        hwid:            null,
+        resetAt:         new Date(),
+        resetCooldownAt: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "HWID reset successfully",
     });
 
   } catch (error) {
-    console.error("Error checking license:", error);
+    console.error("Error resetting HWID:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
