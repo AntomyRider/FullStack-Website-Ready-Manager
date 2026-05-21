@@ -37,7 +37,7 @@ async function sendVerifyMessage(channel) {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("open_key_modal")
-      .setLabel("CLIAM KEY")
+      .setLabel("CLAIM KEY")
       .setStyle(ButtonStyle.Success)
       .setEmoji("<:key:1506736572618510336>"),
 
