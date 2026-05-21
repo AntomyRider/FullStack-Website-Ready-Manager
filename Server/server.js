@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const cors = require('cors') 
 const express = require('express')
-const licenseRouter = require("./routes/licence.routes") 
+const licenseRouter = require("./routes/license.routes") 
 const authRouter = require("./routes/auth.routes") 
 const userRouter = require("./routes/user.routes") 
 const adminRouter = require("./routes/admin.routes") 

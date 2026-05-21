@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const licenseApi = axios.create({
-    baseURL: "/api/licences",
+    baseURL: "/api/licenses",
     withCredentials: true
 })
 

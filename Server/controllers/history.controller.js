@@ -7,7 +7,7 @@ exports.getHistory = async (req, res) => {
       select: {
         id: true,
         activatedAt: true,
-        licenceId: true,
+        licenseId: true,
       },
     });
 

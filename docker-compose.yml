@@ -1,11 +1,11 @@
 services:
   db:
     image: mariadb:10.11
-    container_name: licence_db
+    container_name: license_db
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: bonus2548
-      MARIADB_DATABASE: Licence
+      MARIADB_DATABASE: License
       MARIADB_USER: nutx
       MARIADB_PASSWORD: bonus2548
     volumes:
@@ -21,18 +21,18 @@ services:
   server:
     build:
       context: ./Server
-    container_name: licence_api
+    container_name: license_api
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
       CLIENT_ORIGIN: http://157.254.192.134
       JWT_SECRET: Secret_Ready_Manager
-      DATABASE_URL: mysql://nutx:bonus2548@db:3306/Licence
+      DATABASE_URL: mysql://nutx:bonus2548@db:3306/License
       DB_HOST: db
       DB_USER: nutx
       DB_PASSWORD: bonus2548
-      DB_NAME: Licence
+      DB_NAME: License
     depends_on:
       db:
         condition: service_healthy
@@ -44,7 +44,7 @@ services:
   bot:
     build:
       context: ./Bot
-    container_name: licence_bot
+    container_name: license_bot
     restart: unless-stopped
     env_file:
       - .env
@@ -56,7 +56,7 @@ services:
   client:
     build:
       context: ./Client
-    container_name: licence_web
+    container_name: license_web
     restart: unless-stopped
     depends_on:
       - server

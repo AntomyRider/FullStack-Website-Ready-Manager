@@ -4,7 +4,7 @@ exports.getUserById = async (req, res) => {
   try {
     const { key } = req.params;
 
-    const user = await prisma.licence.findUnique({
+    const user = await prisma.license.findUnique({
       where: {
         key
       }

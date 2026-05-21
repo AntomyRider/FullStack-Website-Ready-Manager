@@ -71,14 +71,14 @@ No session:
 }
 ```
 
-## Admin Licence APIs
+## Admin License APIs
 
 These endpoints require the admin `token` cookie.
 
 ### Create Keys
 
 ```http
-POST /licences/create
+POST /licenses/create
 ```
 
 Request:
@@ -112,7 +112,7 @@ Success:
 ### List Keys
 
 ```http
-GET /licences/list
+GET /licenses/list
 ```
 
 Success:
@@ -135,7 +135,7 @@ Success:
 ### Delete Key
 
 ```http
-DELETE /licences/delete/:id
+DELETE /licenses/delete/:id
 ```
 
 Success:
@@ -154,7 +154,7 @@ Success:
 ### Update Status
 
 ```http
-POST /licences/update/:id
+POST /licenses/update/:id
 ```
 
 Request:
@@ -182,7 +182,7 @@ Success:
 ### Reset HWID
 
 ```http
-POST /licences/resetkey
+POST /licenses/resetkey
 ```
 
 Request:
@@ -205,7 +205,7 @@ Success:
 ### Dashboard Stats
 
 ```http
-GET /licences/stats
+GET /licenses/stats
 ```
 
 Success:
@@ -226,7 +226,7 @@ Success:
 }
 ```
 
-## Public Licence APIs
+## Public License APIs
 
 These endpoints are public and are used by the desktop/client app.
 
@@ -239,7 +239,7 @@ Rule:
 ### Activate Key
 
 ```http
-POST /licences/activate
+POST /licenses/activate
 ```
 
 Request:
@@ -269,7 +269,7 @@ Success:
 ### Verify Key
 
 ```http
-POST /licences/verify
+POST /licenses/verify
 ```
 
 Request:
@@ -307,7 +307,7 @@ Error examples:
 ```json
 {
   "success": false,
-  "message": "Licence expired"
+  "message": "License expired"
 }
 ```
 
@@ -328,7 +328,7 @@ Create one key:
 curl -b cookies.txt \
   -H "Content-Type: application/json" \
   -d '{"amount":1,"exp":30}' \
-  http://157.254.192.134/api/licences/create
+  http://157.254.192.134/api/licenses/create
 ```
 
 Activate:
@@ -336,7 +336,7 @@ Activate:
 ```bash
 curl -H "Content-Type: application/json" \
   -d '{"key":"ABCDE-12345-FGHIJ-67890","hwid":"USER-HWID-001"}' \
-  http://157.254.192.134/api/licences/activate
+  http://157.254.192.134/api/licenses/activate
 ```
 
 Verify:
@@ -344,7 +344,7 @@ Verify:
 ```bash
 curl -H "Content-Type: application/json" \
   -d '{"key":"ABCDE-12345-FGHIJ-67890","hwid":"USER-HWID-001"}' \
-  http://157.254.192.134/api/licences/verify
+  http://157.254.192.134/api/licenses/verify
 ```
 
 ## VPS Notes

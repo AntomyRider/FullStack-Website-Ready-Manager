@@ -3,7 +3,7 @@ const { API_URL } = require("../config");
 
 async function checkKey(key, discordId) {
   try {
-    const res = await axios.post(`${API_URL}/licences/claim`, {
+    const res = await axios.post(`${API_URL}/licenses/claim`, {
       key,
       discordId,
     });
@@ -19,7 +19,7 @@ async function checkKey(key, discordId) {
 
 async function checkKeyReset(key, discordId) {
   try {
-    const res = await axios.post(`${API_URL}/licences/reset-hwid`, {
+    const res = await axios.post(`${API_URL}/licenses/reset-hwid`, {
       key,
       discordId,
     });
