@@ -59,9 +59,33 @@ exports.createKey = async (req, res) => {
 
 exports.listKey = async (req, res) => {
   try {
-    const licenses = await prisma.license.findMany();
+    const [licenses, claims] = await Promise.all([
+      prisma.license.findMany(),
+      prisma.claim.findMany(),
+    ]);
 
-    return res.status(200).json(licenses);
+    // Build a map of key → discordId for O(1) lookup
+    const claimMap = new Map(claims.map((c) => [c.key, c.discordId]));
+
+    const result = licenses
+      // Keys without HWID (unactivated) come first
+      .sort((a, b) => {
+        if (!a.hwid && b.hwid) return -1;
+        if (a.hwid && !b.hwid) return 1;
+        return 0;
+      })
+      .map((license) => ({
+        ...license,
+        discordId: claimMap.get(license.key) ?? null,
+        usedBy:
+          license.status === "Redeemed"
+            ? "Redeemed"
+            : license.hwid
+            ? "Activated"
+            : null,
+      }));
+
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

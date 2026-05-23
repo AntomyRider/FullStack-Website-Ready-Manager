@@ -81,6 +81,23 @@ const ActionBtn = ({ onClick, icon: Icon, variant = "danger", label }) => {
   )
 }
 
+const UsedByBadge = ({ usedBy }) => {
+  if (!usedBy) return <span className="text-zinc-700 text-[11.5px]">—</span>
+  const isRedeemed = usedBy === "Redeemed"
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium border ${
+        isRedeemed
+          ? "bg-violet-500/10 text-violet-400 border-violet-500/25"
+          : "bg-sky-500/10 text-sky-400 border-sky-500/25"
+      }`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${isRedeemed ? "bg-violet-400" : "bg-sky-400"}`} />
+      {usedBy}
+    </span>
+  )
+}
+
 // ────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────
@@ -234,20 +251,22 @@ const TableLicenses = () => {
         <div className="max-h-[820px] overflow-y-auto overflow-x-auto">
           <table className="w-full border-collapse text-[13px]" style={{ tableLayout: "fixed" }}>
             <colgroup>
-              <col style={{ width: 52 }} />
-              <col style={{ width: 210 }} />
-              <col style={{ width: 160 }} />
+              <col style={{ width: 48 }} />
+              <col style={{ width: 190 }} />
+              <col style={{ width: 145 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 105 }} />
+              <col style={{ width: 72 }} />
               <col style={{ width: 110 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 88 }} />
-              <col style={{ width: 120 }} />
+              <col style={{ width: 105 }} />
+              <col style={{ width: 130 }} />
               <col style={{ width: 80 }} />
             </colgroup>
 
             {/* Head */}
             <thead className="sticky top-0 z-10 bg-zinc-950">
               <tr className="border-b border-zinc-800/50">
-                {["ID", "Key", "HWID", "Status", "Expires", "Days", "Created", "Actions"].map((h) => (
+                {["ID", "Key", "HWID", "Status", "Expires", "Days", "Created", "Used By", "Discord", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-[10.5px] font-medium tracking-[0.1em] uppercase text-zinc-600 whitespace-nowrap"
@@ -262,7 +281,7 @@ const TableLicenses = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-14 text-center text-zinc-600 text-[13px]">
+                  <td colSpan={10} className="px-4 py-14 text-center text-zinc-600 text-[13px]">
                     <div className="flex items-center justify-center gap-2">
                       <RotateCcw size={14} className="animate-spin" /> Loading…
                     </div>
@@ -270,7 +289,7 @@ const TableLicenses = () => {
                 </tr>
               ) : filteredLicenses.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-14 text-center text-zinc-600 text-[13px]">
+                  <td colSpan={10} className="px-4 py-14 text-center text-zinc-600 text-[13px]">
                     No licenses found
                   </td>
                 </tr>
@@ -321,6 +340,23 @@ const TableLicenses = () => {
                       {/* Created */}
                       <td className="px-4 py-3.5 text-[12px] text-zinc-500">
                         {fmtDate(license.createdAt)}
+                      </td>
+
+                      {/* Used By */}
+                      <td className="px-4 py-3.5">
+                        <UsedByBadge usedBy={license.usedBy} />
+                      </td>
+
+                      {/* Discord */}
+                      <td className="px-4 py-3.5 font-mono text-[11.5px] text-zinc-500 truncate">
+                        {license.discordId ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                            {license.discordId}
+                          </span>
+                        ) : (
+                          <span className="text-zinc-700">—</span>
+                        )}
                       </td>
 
                       {/* Actions */}
