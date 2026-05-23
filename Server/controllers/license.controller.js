@@ -71,6 +71,22 @@ exports.deleteKey = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ success: false, message: "ID is required" });
+    }
+
+    // ✅ ลบ related records ก่อนเสมอ
+    await prisma.historyKeyActivated.deleteMany({
+      where: { licenseId: parseInt(id) },
+    });
+
+    await prisma.claim.deleteMany({
+      where: { key: (await prisma.license.findUnique({ 
+        where: { id: parseInt(id) }, 
+        select: { key: true } 
+      }))?.key },
+    });
+
     const deleted = await prisma.license.delete({
       where: { id: parseInt(id) },
     });
@@ -438,5 +454,119 @@ exports.resetHwid = async (req, res) => {
       success: false,
       message: "Internal server error",
     });
+  }
+};
+
+exports.redeemKey = async (req, res) => {
+  try {
+    const { key, redeemCode } = req.body;
+
+    if (!key || !redeemCode) {
+      return res.status(400).json({
+        success: false,
+        message: "key and redeemCode are required",
+      });
+    }
+
+    if (key === redeemCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot redeem your own key",
+      });
+    }
+
+    // หา activated key (unique — หาตรงๆ เลย)
+    const activatedLicense = await prisma.license.findUnique({
+      where: { key },
+    });
+
+    if (!activatedLicense) {
+      return res.status(404).json({
+        success: false,
+        message: "License not found",
+      });
+    }
+
+    if (!activatedLicense.hwid) {
+      return res.status(403).json({
+        success: false,
+        message: "This key has not been activated yet",
+      });
+    }
+
+    // หา redeem code
+    const redeemLicense = await prisma.license.findUnique({
+      where: { key: redeemCode },
+    });
+
+    if (!redeemLicense) {
+      return res.status(404).json({
+        success: false,
+        message: "Redeem code not found",
+      });
+    }
+
+    if (redeemLicense.status === "Redeemed") {
+      return res.status(403).json({
+        success: false,
+        message: "This redeem code has already been used",
+      });
+    }
+
+    if (redeemLicense.status !== "Enable") {
+      return res.status(403).json({
+        success: false,
+        message: "This redeem code is disabled",
+      });
+    }
+
+    if (redeemLicense.hwid) {
+      return res.status(403).json({
+        success: false,
+        message: "This redeem code is already activated",
+      });
+    }
+
+    // คำนวณ expireAt ใหม่
+    const baseDate =
+      activatedLicense.expireAt && activatedLicense.expireAt > new Date()
+        ? activatedLicense.expireAt  // ต่อจากวันหมดอายุเดิม
+        : new Date();                // ถ้าหมดแล้วนับจากวันนี้
+
+    const newExpireAt = new Date(
+      baseDate.getTime() + redeemLicense.expDays * 24 * 60 * 60 * 1000
+    );
+
+    // ต่อเวลา key หลัก
+    const updated = await prisma.license.update({
+      where: { key },
+      data: {
+        expDays:  activatedLicense.expDays + redeemLicense.expDays,
+        expireAt: newExpireAt,
+      },
+    });
+
+    // Mark redeemCode → Redeemed + ผูก hwid ไว้เป็น history
+    await prisma.license.update({
+      where: { key: redeemCode },
+      data: {
+        status:      "Redeemed",
+        hwid:        activatedLicense.hwid,  // hwid ของคนที่ redeem
+        activatedAt: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Extended by ${redeemLicense.expDays} days`,
+      data: {
+        key:      updated.key,
+        expDays:  updated.expDays,
+        expireAt: updated.expireAt,
+      },
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

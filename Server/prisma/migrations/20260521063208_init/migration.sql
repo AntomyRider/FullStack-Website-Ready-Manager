@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE `Licence` (
+CREATE TABLE `License` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `key` VARCHAR(191) NOT NULL,
     `hwid` VARCHAR(191) NULL,
@@ -13,19 +13,19 @@ CREATE TABLE `Licence` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `Licence_key_key`(`key`),
-    INDEX `Licence_key_idx`(`key`),
-    INDEX `Licence_hwid_idx`(`hwid`),
+    UNIQUE INDEX `License_key_key`(`key`),
+    INDEX `License_key_idx`(`key`),
+    INDEX `License_hwid_idx`(`hwid`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
 CREATE TABLE `HistoryKeyActivated` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `licenceId` INTEGER NOT NULL,
+    `licenseId` INTEGER NOT NULL,
     `activatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
-    INDEX `HistoryKeyActivated_licenceId_idx`(`licenceId`),
+    INDEX `HistoryKeyActivated_licenseId_idx`(`licenseId`),
     INDEX `HistoryKeyActivated_activatedAt_idx`(`activatedAt`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -55,4 +55,4 @@ CREATE TABLE `User` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
-ALTER TABLE `HistoryKeyActivated` ADD CONSTRAINT `HistoryKeyActivated_licenceId_fkey` FOREIGN KEY (`licenceId`) REFERENCES `Licence`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `HistoryKeyActivated` ADD CONSTRAINT `HistoryKeyActivated_licenseId_fkey` FOREIGN KEY (`licenseId`) REFERENCES `License`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

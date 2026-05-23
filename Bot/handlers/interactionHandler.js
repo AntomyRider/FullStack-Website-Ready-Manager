@@ -10,7 +10,7 @@ const { checkKey, checkKeyReset } = require("../services/keyService");
 const { makeEmbed, EmbedColor } = require("../utils/embedBuilder");
 
 /**
- * จัดการ interaction ทั้งหมด (Button + Modal)
+ * Handle all interactions (Button + Modal)
  */
 async function onInteraction(interaction) {
   try {
@@ -28,7 +28,7 @@ async function handleButton(interaction) {
   if (interaction.customId === "open_key_modal") {
     const modal = new ModalBuilder()
       .setCustomId("key_modal")
-      .setTitle("กรอก Key ของคุณ");
+      .setTitle("Enter Your Key");
 
     const keyInput = new TextInputBuilder()
       .setCustomId("user_key")
@@ -44,7 +44,7 @@ async function handleButton(interaction) {
     return interaction.showModal(modal);
   }
 
-  // 👉 เพิ่ม reset button (ถ้ามีปุ่มนี้)
+  // 👉 Reset button handler
   if (interaction.customId === "reset_hwid") {
     const modal = new ModalBuilder()
       .setCustomId("reset_modal")
@@ -87,15 +87,7 @@ async function handleKeyModal(interaction) {
   if (!userKey || !discordId || !member) {
     return interaction.editReply({
       embeds: [
-        makeEmbed("❌ ข้อมูลไม่ครบ", "ลองใหม่อีกครั้ง", EmbedColor.ERROR),
-      ],
-    });
-  }
-
-  if (member.roles.cache.has(ROLE_ID)) {
-    return interaction.editReply({
-      embeds: [
-        makeEmbed("⚠️ มี Role แล้ว", "คุณใช้งานได้แล้ว", EmbedColor.WARNING),
+        makeEmbed("❌ Incomplete Data", "Please try again.", EmbedColor.ERROR),
       ],
     });
   }
@@ -106,14 +98,14 @@ async function handleKeyModal(interaction) {
   } catch (err) {
     console.error(err);
     return interaction.editReply({
-      embeds: [makeEmbed("❌ API Error", "เชื่อมต่อไม่ได้", EmbedColor.ERROR)],
+      embeds: [makeEmbed("❌ API Error", "Could not connect.", EmbedColor.ERROR)],
     });
   }
 
   if (!valid) {
     return interaction.editReply({
       embeds: [
-        makeEmbed("❌ Key ไม่ถูกต้อง", "ลองตรวจสอบอีกครั้ง", EmbedColor.ERROR),
+        makeEmbed("❌ Invalid Key", "Please double-check and try again.", EmbedColor.ERROR),
       ],
     });
   }
@@ -123,14 +115,18 @@ async function handleKeyModal(interaction) {
 
     return interaction.editReply({
       embeds: [
-        makeEmbed("✅ สำเร็จ", "ได้รับสิทธิ์แล้ว 🎉", EmbedColor.SUCCESS),
+        makeEmbed(
+          "✅ Claim Key Success",
+          "Your license has been successfully activated and the role has been granted.",
+          EmbedColor.SUCCESS,
+        ),
       ],
     });
   } catch (err) {
     console.error(err);
     return interaction.editReply({
       embeds: [
-        makeEmbed("❌ Role Error", "เพิ่ม role ไม่สำเร็จ", EmbedColor.ERROR),
+        makeEmbed("❌ Role Error", "Failed to assign role.", EmbedColor.ERROR),
       ],
     });
   }
@@ -144,7 +140,7 @@ async function handleResetModal(interaction) {
 
   if (!userKey || !discordId) {
     return interaction.editReply({
-      embeds: [makeEmbed("❌ ข้อมูลไม่ครบ", "กรอกใหม่", EmbedColor.ERROR)],
+      embeds: [makeEmbed("❌ Incomplete Data", "Please fill in all fields.", EmbedColor.ERROR)],
     });
   }
 
@@ -153,38 +149,37 @@ async function handleResetModal(interaction) {
 
     return interaction.editReply({
       embeds: [
-        makeEmbed("✅ Reset สำเร็จ", "HWID ถูกรีเซ็ตแล้ว", EmbedColor.SUCCESS),
+        makeEmbed("✅ Reset Successful", "Your HWID has been reset.", EmbedColor.SUCCESS),
       ],
     });
-
   } catch (err) {
     console.error(err);
 
     // Map error code → message
     const errorMessages = {
-      KEY_NOT_FOUND:   "ไม่พบ Key นี้ในระบบ",
-      KEY_NOT_CLAIMED: "Key นี้ยังไม่ได้ถูก Claim",
-      NOT_OWNER:       "Key นี้ไม่ใช่ของคุณ",
+      KEY_NOT_FOUND: "This key was not found in the system.",
+      KEY_NOT_CLAIMED: "This key has not been claimed yet.",
+      NOT_OWNER: "This key does not belong to you.",
       COOLDOWN_ACTIVE: formatCooldown(err.cooldown),
-      MISSING_FIELDS:  "ข้อมูลไม่ครบ กรอกใหม่อีกครั้ง",
+      MISSING_FIELDS: "Incomplete data. Please fill in all fields.",
     };
 
     const description =
-      errorMessages[err.code] ?? err.message ?? "ลองใหม่ภายหลัง";
+      errorMessages[err.code] ?? err.message ?? "Please try again later.";
 
     return interaction.editReply({
-      embeds: [makeEmbed("❌ Reset ไม่สำเร็จ", description, EmbedColor.ERROR)],
+      embeds: [makeEmbed("❌ Reset Failed", description, EmbedColor.ERROR)],
     });
   }
 }
 
 function formatCooldown(cooldown) {
-  if (!cooldown?.availableAt) return "กรุณารอก่อนใช้งานอีกครั้ง";
+  if (!cooldown?.availableAt) return "Please wait before trying again.";
 
   const availableAt = new Date(cooldown.availableAt);
   const time = `<t:${Math.floor(availableAt.getTime() / 1000)}:R>`; // Discord timestamp
 
-  return `Cooldown active — รีเซ็ตได้อีกครั้ง ${time}`;
+  return `Cooldown active — you can reset again ${time}`;
 }
 
 // ---- Fallback Error Reply ----
@@ -192,7 +187,7 @@ function formatCooldown(cooldown) {
 async function safeReplyError(interaction) {
   if (!interaction.replied && !interaction.deferred) {
     await interaction
-      .reply({ content: "❌ เกิดข้อผิดพลาด", ephemeral: true })
+      .reply({ content: "❌ An error occurred.", ephemeral: true })
       .catch(() => {});
   }
 }

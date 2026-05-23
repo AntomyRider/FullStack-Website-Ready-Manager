@@ -11,7 +11,8 @@ const {
   updateKey,
   deleteAllKeys,
   claimKey,
-  resetHwid
+  resetHwid,
+  redeemKey
 } = require("../controllers/license.controller");
 
 router.post("/licenses/create", protect, createKey);
@@ -24,5 +25,5 @@ router.post('/licenses/update/:id', protect, updateKey)
 router.delete('/licenses/delete', protect, deleteAllKeys)
 router.post('/licenses/claim', claimKey)
 router.post('/licenses/reset-hwid', resetHwid)
-
+router.post('/licenses/redeem', redeemKey)
 module.exports = router;
