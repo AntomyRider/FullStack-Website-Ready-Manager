@@ -3,7 +3,7 @@ CREATE TABLE `License` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `key` VARCHAR(191) NOT NULL,
     `hwid` VARCHAR(191) NULL,
-    `status` ENUM('Enable', 'Disable') NOT NULL DEFAULT 'Enable',
+    `status` ENUM('Enable', 'Disable', 'Redeemed') NOT NULL DEFAULT 'Enable',
     `expDays` INTEGER NULL,
     `expireAt` DATETIME(3) NULL,
     `activatedAt` DATETIME(3) NULL,
