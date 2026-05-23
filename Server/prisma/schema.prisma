@@ -9,7 +9,6 @@ datasource db {
 enum StatusKey {
   Enable
   Disable
-  Redeemed
 }
 
 model License {
@@ -24,6 +23,7 @@ model License {
   resetAt            DateTime?
   resetCooldownAt    DateTime?
   resetCount         Int      @default(0)
+  usedBy    String?
 
   historyActivations HistoryKeyActivated[]
   createdAt          DateTime               @default(now())

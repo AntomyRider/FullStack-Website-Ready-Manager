@@ -77,12 +77,6 @@ exports.listKey = async (req, res) => {
       .map((license) => ({
         ...license,
         discordId: claimMap.get(license.key) ?? null,
-        usedBy:
-          license.status === "Redeemed"
-            ? "Redeemed"
-            : license.hwid
-            ? "Activated"
-            : null,
       }));
 
     return res.status(200).json(result);
@@ -168,6 +162,7 @@ exports.activateKey = async (req, res) => {
         where: { key },
         data: {
           hwid,
+          usedBy:      "Activated",
           activatedAt: now,
           expireAt:
             license.expDays > 0
@@ -530,7 +525,7 @@ exports.redeemKey = async (req, res) => {
       });
     }
 
-    if (redeemLicense.status === "Redeemed") {
+    if (redeemLicense.usedBy === "Redeemed") {
       return res.status(403).json({
         success: false,
         message: "This redeem code has already been used",
@@ -570,12 +565,12 @@ exports.redeemKey = async (req, res) => {
       },
     });
 
-    // Mark redeemCode → Redeemed + ผูก hwid ไว้เป็น history
     await prisma.license.update({
       where: { key: redeemCode },
       data: {
-        status:      "Redeemed",
-        hwid:        activatedLicense.hwid,  // hwid ของคนที่ redeem
+        status:      "Disable",
+        usedBy:      "Redeemed",
+        hwid:        activatedLicense.hwid,
         activatedAt: new Date(),
       },
     });

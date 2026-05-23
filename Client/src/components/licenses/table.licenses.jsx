@@ -81,18 +81,21 @@ const ActionBtn = ({ onClick, icon: Icon, variant = "danger", label }) => {
   )
 }
 
+const USED_BY_STYLES = {
+  Redeemed:  { bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/25", dot: "bg-violet-400" },
+  Activated: { bg: "bg-sky-500/10",    text: "text-sky-400",    border: "border-sky-500/25",    dot: "bg-sky-400"    },
+}
+
 const UsedByBadge = ({ usedBy }) => {
   if (!usedBy) return <span className="text-zinc-700 text-[11.5px]">—</span>
-  const isRedeemed = usedBy === "Redeemed"
+  const style = USED_BY_STYLES[usedBy] ?? {
+    bg: "bg-zinc-500/10", text: "text-zinc-400", border: "border-zinc-500/25", dot: "bg-zinc-400",
+  }
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium border ${
-        isRedeemed
-          ? "bg-violet-500/10 text-violet-400 border-violet-500/25"
-          : "bg-sky-500/10 text-sky-400 border-sky-500/25"
-      }`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium border ${style.bg} ${style.text} ${style.border}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${isRedeemed ? "bg-violet-400" : "bg-sky-400"}`} />
+      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
       {usedBy}
     </span>
   )
