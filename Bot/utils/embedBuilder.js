@@ -66,6 +66,7 @@ function makeVerifyEmbed(imageUrl, stats, total) {
     .setDescription(
       [
         "**<:ReadyIcon:1506734243898855505> READY MANAGER : โปรแกรมช่วยโพสต์**",
+        "",
         "```",
         "⚠️ WARNING\n",
         "- กรุณาสร้างซองอั่งเปาให้มียอดเงินเพียงพอต่อราคาคีย์ที่ต้องการซื้อ",
@@ -84,10 +85,10 @@ function makeVerifyEmbed(imageUrl, stats, total) {
         "```",
         `⭐ TOTAL STOCK KEYS ⭐`,
         `----------------------------------------`,
-        `🌨️ 1 Days   - [ 📦 ${stats.days1.remaining} Keys ] `,
-        `🔔 7 Days   - [ 📦 ${stats.days7.remaining} Keys ] `,
+        `⚡ 1 Days   - [ 📦 ${stats.days1.remaining} Keys ] `,
+        `📅 7 Days   - [ 📦 ${stats.days7.remaining} Keys ] `,
         `🧩 30 Days  - [ 📦 ${stats.days30.remaining} Keys ] `,
-        `💎 Lifetime - [ 📦 ${stats.lifetime.remaining} Keys ] `,
+        `♾️ Lifetime - [ 📦 ${stats.lifetime.remaining} Keys ] `,
         `----------------------------------------`,
         `💰 SOLD - ${total.sold} Keys`,
         "```",

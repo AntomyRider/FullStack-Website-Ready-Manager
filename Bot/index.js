@@ -7,7 +7,7 @@ const {
 const { TOKEN } = require("./config");
 const { onReady } = require("./handlers/readyHandler");
 const { onInteraction } = require("./handlers/interactionHandler");
-
+const { handleBankSlipMessage } = require("./handlers/bankSlipHandler"); // [1] เพิ่ม 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -21,6 +21,7 @@ const client = new Client({
 
 client.once("clientReady", () => onReady(client));
 client.on("interactionCreate", onInteraction);
+client.on("messageCreate", handleBankSlipMessage); // [2] เพิ่ม event listener
 
 // ป้องกันบอทแครชจากข้อผิดพลาดของ Discord API
 client.on("error", (err) => {

@@ -24,6 +24,7 @@ module.exports = {
   BANK_HOLDER: process.env.BANK_HOLDER || "นครินทร์ งานยางหวาย",
   BANK_ACCOUNT: process.env.BANK_ACCOUNT || "4280686564",
 
+  BANK_CATEGORY_ID: process.env.BANK_CATEGORY_ID || "1507399253918617700",
   LOG_CHANNEL_ID: process.env.LOG_CHANNEL_ID || "1512868304891412572",
 
   PRICE_1_DAY: parseInt(process.env.PRICE_1_DAY) || 19,

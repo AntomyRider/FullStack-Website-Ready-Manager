@@ -7,6 +7,8 @@ const {
   ButtonBuilder,
   ButtonStyle,
   StringSelectMenuBuilder,
+  ChannelType,
+  PermissionFlagsBits,
 } = require("discord.js");
 const axios = require("axios");
 
@@ -19,15 +21,14 @@ const {
   PRICE_30_DAYS,
   PRICE_LIFETIME,
   API_URL,
+  ADMIN_ROLE_ID,
+  BANK_CATEGORY_ID,
 } = require("../config");
 const { checkKey, checkKeyReset } = require("../services/keyService");
 const { redeemRaw } = require("../services/voucherService");
 const { makeEmbed, EmbedColor } = require("../utils/embedBuilder");
 const { updateVerifyMessage } = require("./readyHandler");
 
-/**
- * Handle all interactions (Button + Modal)
- */
 async function onInteraction(interaction) {
   try {
     if (interaction.isButton()) return handleButton(interaction);
@@ -57,11 +58,9 @@ async function handleButton(interaction) {
       .setMaxLength(100);
 
     modal.addComponents(new ActionRowBuilder().addComponents(keyInput));
-
     return interaction.showModal(modal);
   }
 
-  // 👉 Reset button handler
   if (interaction.customId === "reset_hwid") {
     const modal = new ModalBuilder()
       .setCustomId("reset_modal")
@@ -75,11 +74,9 @@ async function handleButton(interaction) {
       .setRequired(true);
 
     modal.addComponents(new ActionRowBuilder().addComponents(keyInput));
-
     return interaction.showModal(modal);
   }
 
-  // 👉 Buy key button handler
   if (interaction.customId === "buy_key") {
     const select = new StringSelectMenuBuilder()
       .setCustomId("buy_key_select")
@@ -89,13 +86,13 @@ async function handleButton(interaction) {
           label: "1 Day",
           description: `ราคา ${PRICE_1_DAY} บาท | ใช้งาน 1 วัน`,
           value: "buy_option_1",
-          emoji: "🌨️",
+          emoji: "⚡",
         },
         {
           label: "7 Days",
           description: `ราคา ${PRICE_7_DAYS} บาท | ใช้งาน 7 วัน`,
           value: "buy_option_7",
-          emoji: "🔔",
+          emoji: "📅",
         },
         {
           label: "30 Days",
@@ -107,76 +104,267 @@ async function handleButton(interaction) {
           label: "Lifetime",
           description: `ราคา ${PRICE_LIFETIME} บาท | ใช้งานถาวร`,
           value: "buy_option_0",
-          emoji: "💎",
+          emoji: "♾️",
         },
       ]);
 
     const row = new ActionRowBuilder().addComponents(select);
 
-    const embed = makeEmbed(
-      "💸 เลือกประเภทคีย์ที่ต้องการซื้อ (Select Key Type)",
-      "โปรดเลือกแพ็กเกจคีย์ที่คุณต้องการสั่งซื้อ",
-      EmbedColor.INFO,
-    );
-
     return interaction.reply({
-      embeds: [embed],
+      embeds: [
+        makeEmbed(
+          "💸 เลือกประเภทคีย์ที่ต้องการซื้อ (Select Key Type)",
+          "โปรดเลือกแพ็กเกจคีย์ที่คุณต้องการสั่งซื้อ",
+          EmbedColor.INFO,
+        ),
+      ],
       components: [row],
       ephemeral: true,
     });
   }
-}
 
-async function handleModal(interaction) {
-  const { customId } = interaction;
+  // ปุ่มปิดห้อง Bank (Admin กด)
+  if (interaction.customId.startsWith("close_bank_channel_")) {
+    const channelId = interaction.customId.replace("close_bank_channel_", "");
 
-  if (customId === "key_modal") {
-    return handleKeyModal(interaction);
-  }
+    if (!interaction.member.roles.cache.has(ADMIN_ROLE_ID)) {
+      return interaction.reply({
+        embeds: [
+          makeEmbed("❌ ไม่มีสิทธิ์", "เฉพาะ Admin เท่านั้น", EmbedColor.ERROR),
+        ],
+        ephemeral: true,
+      });
+    }
 
-  if (customId === "reset_modal") {
-    return handleResetModal(interaction);
-  }
+    await interaction.reply({
+      embeds: [
+        makeEmbed(
+          "🗑️ กำลังปิดห้อง...",
+          "ห้องนี้จะถูกลบใน 5 วินาที",
+          EmbedColor.INFO,
+        ),
+      ],
+    });
 
-  if (customId.startsWith("voucher_modal_")) {
-    return handleVoucherModal(interaction);
+    setTimeout(async () => {
+      try {
+        const ch = interaction.guild.channels.cache.get(channelId);
+        if (ch) await ch.delete("Bank payment completed");
+      } catch (err) {
+        console.error("[Bank] Failed to delete channel:", err);
+      }
+    }, 5000);
+
+    return;
   }
 }
 
 // ---- Select Menu Handler ----
 
 async function handleSelectMenu(interaction) {
+  // Step 1: เลือก package → แสดง dropdown วิธีชำระเงิน
   if (interaction.customId === "buy_key_select") {
-    const selectedValue = interaction.values[0];
-    const days = parseInt(selectedValue.replace("buy_option_", ""));
-    const price =
-      days === 1
-        ? PRICE_1_DAY
-        : days === 7
-          ? PRICE_7_DAYS
-          : days === 30
-            ? PRICE_30_DAYS
-            : PRICE_LIFETIME;
+    const daysMap = {
+      buy_option_1: 1,
+      buy_option_7: 7,
+      buy_option_30: 30,
+      buy_option_0: 0,
+    };
+
+    const days = daysMap[interaction.values[0]];
+
+    const priceMap = {
+      1: PRICE_1_DAY,
+      7: PRICE_7_DAYS,
+      30: PRICE_30_DAYS,
+      0: PRICE_LIFETIME,
+    };
+
+    const price = priceMap[days];
     const durationLabel = days === 0 ? "Lifetime (ถาวร)" : `${days} วัน`;
 
-    const modal = new ModalBuilder()
-      .setCustomId(`voucher_modal_${days}`)
-      .setTitle(`ซื้อคีย์แบบ ${durationLabel}`);
+    const paymentSelect = new StringSelectMenuBuilder()
+      .setCustomId(`payment_method_${days}`)
+      .setPlaceholder("เลือกวิธีชำระเงิน...")
+      .addOptions([
+        {
+          label: "TrueMoney Wallet",
+          description: "ชำระผ่านซองอั่งเปา TrueMoney",
+          value: "truemoney",
+          emoji: "<:channels4_profile:1513129671418581084>",
+        },
+        {
+          label: "โอนผ่านธนาคาร",
+          description: "ส่งสลิปให้แอดมินตรวจสอบ",
+          value: "bank",
+          emoji: "<:__:1513130052370567348>",
+        },
+      ]);
 
-    const voucherInput = new TextInputBuilder()
-      .setCustomId("voucher_url")
-      .setLabel(`ลิงก์ซองอั่งเปา TrueMoney (${price} บาท)`)
-      .setPlaceholder("https://gift.truemoney.com/campaign/?v=xxxx")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
+    return interaction.reply({
+      embeds: [
+        makeEmbed(
+          null,
+          [
+            "```",
+            `- Package : ${durationLabel}`,
+            `- Price   : ${price}.-`,
+            "```",
+          ].join("\n"),
+          EmbedColor.INFO,
+        ),
+      ],
+      components: [new ActionRowBuilder().addComponents(paymentSelect)],
+      ephemeral: true,
+    });
+  }
 
-    modal.addComponents(new ActionRowBuilder().addComponents(voucherInput));
+  // Step 2: เลือกวิธีชำระเงิน
+  if (interaction.customId.startsWith("payment_method_")) {
+    const days = parseInt(interaction.customId.replace("payment_method_", ""));
+    const method = interaction.values[0];
 
-    return interaction.showModal(modal);
+    if (method === "truemoney") {
+      const modal = new ModalBuilder()
+        .setCustomId(`voucher_modal_${days}`)
+        .setTitle("TrueMoney Gift");
+
+      const voucherInput = new TextInputBuilder()
+        .setCustomId("voucher_url")
+        .setLabel("ลิงก์ซองอั่งเปา")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(voucherInput));
+      return interaction.showModal(modal);
+    }
+
+    if (method === "bank") {
+      await interaction.deferReply({ ephemeral: true });
+
+      const guild = interaction.guild;
+      const member = interaction.member;
+      const user = interaction.user;
+
+      const priceMap = {
+        1: PRICE_1_DAY,
+        7: PRICE_7_DAYS,
+        30: PRICE_30_DAYS,
+        0: PRICE_LIFETIME,
+      };
+
+      const price = priceMap[days] ?? PRICE_LIFETIME;
+      const durationLabel = days === 0 ? "Lifetime (ถาวร)" : `${days} วัน`;
+
+      try {
+        const channel = await guild.channels.create({
+          name: `pay-${user.username}`
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, "-"),
+          type: ChannelType.GuildText,
+          parent: BANK_CATEGORY_ID || null,
+          permissionOverwrites: [
+            {
+              id: guild.roles.everyone.id,
+              deny: [PermissionFlagsBits.ViewChannel],
+            },
+            {
+              id: member.id,
+              allow: [
+                PermissionFlagsBits.ViewChannel,
+                PermissionFlagsBits.SendMessages,
+                PermissionFlagsBits.ReadMessageHistory,
+                PermissionFlagsBits.AttachFiles,
+              ],
+            },
+            {
+              id: ADMIN_ROLE_ID,
+              allow: [
+                PermissionFlagsBits.ViewChannel,
+                PermissionFlagsBits.SendMessages,
+                PermissionFlagsBits.ReadMessageHistory,
+                PermissionFlagsBits.ManageMessages,
+                PermissionFlagsBits.AttachFiles,
+              ],
+            },
+            {
+              id: guild.members.me.id,
+              allow: [
+                PermissionFlagsBits.ViewChannel,
+                PermissionFlagsBits.SendMessages,
+                PermissionFlagsBits.ManageChannels,
+                PermissionFlagsBits.ReadMessageHistory,
+              ],
+            },
+          ],
+        });
+
+        const closeButton = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`close_bank_channel_${channel.id}`)
+            .setLabel("✅ ปิดห้องนี้ (เสร็จสิ้น)")
+            .setStyle(ButtonStyle.Danger),
+        );
+
+        await channel.send({
+          content: `<@${user.id}>`,
+          embeds: [
+            makeEmbed(
+              "🏦 BANK TRANSFER PAYMENT",
+              [
+                "```",
+                `📦 สินค้า`,
+                `- แพ็คเกจ : ${durationLabel}`,
+                `- ราคา    : ${price}.-`,
+                "```",
+                `⭐ รายละเอียดบัญชี`,
+                "```",
+                `- ธนาคาร  : กรุงไทย`,
+                `- เลขบัญชี : 4280686564`,
+                `- ชื่อบัญชี  : นครินทร์ งานยางหวาย`,
+                "```",
+              ].join("\n"),
+              EmbedColor.INFO,
+            ),
+          ],
+          components: [closeButton],
+        });
+
+        return interaction.editReply({
+          embeds: [
+            makeEmbed(
+              "✅ ห้องชำระเงินถูกสร้างแล้ว",
+              `ห้อง ${channel} ถูกสร้างขึ้นสำหรับคุณแล้ว\nกรุณาไปส่งสลิปในห้องนั้นได้เลย`,
+              EmbedColor.SUCCESS,
+            ),
+          ],
+        });
+      } catch (err) {
+        console.error("[Bank] Failed to create private channel:", err);
+        return interaction.editReply({
+          embeds: [
+            makeEmbed(
+              "❌ เกิดข้อผิดพลาด",
+              "ไม่สามารถสร้างห้องชำระเงินได้ โปรดติดต่อแอดมิน",
+              EmbedColor.ERROR,
+            ),
+          ],
+        });
+      }
+    }
   }
 }
 
 // ---- Modal Handler ----
+
+async function handleModal(interaction) {
+  const { customId } = interaction;
+
+  if (customId === "key_modal") return handleKeyModal(interaction);
+  if (customId === "reset_modal") return handleResetModal(interaction);
+  if (customId.startsWith("voucher_modal_"))
+    return handleVoucherModal(interaction);
+}
 
 async function handleKeyModal(interaction) {
   await interaction.deferReply({ ephemeral: true });
@@ -220,7 +408,6 @@ async function handleKeyModal(interaction) {
   try {
     await member.roles.add(ROLE_ID);
 
-    // อัปเดตสถิติสต็อกบนหน้า Verify Panel
     updateVerifyMessage(interaction.client).catch((err) =>
       console.error("[Stats] Failed to update stats panel:", err.message),
     );
@@ -277,7 +464,6 @@ async function handleResetModal(interaction) {
   } catch (err) {
     console.error(err);
 
-    // Map error code → message
     const errorMessages = {
       KEY_NOT_FOUND: "This key was not found in the system.",
       KEY_NOT_CLAIMED: "This key has not been claimed yet.",
@@ -316,7 +502,6 @@ async function handleVoucherModal(interaction) {
     });
   }
 
-  // ดึงราคาและข้อมูลตามประเภทคีย์
   const price =
     days === 1
       ? PRICE_1_DAY
@@ -325,11 +510,11 @@ async function handleVoucherModal(interaction) {
         : days === 30
           ? PRICE_30_DAYS
           : PRICE_LIFETIME;
+
   const requiredSatang = price * 100;
   const durationLabel = days === 0 ? "Lifetime (ถาวร)" : `${days} วัน`;
 
   try {
-    // 1. ดึงเงินจากซองอั่งเปาเข้าเบอร์แอดมิน
     const redeemRes = await redeemRaw(ADMIN_PHONE, voucherUrl);
 
     if (!redeemRes.success) {
@@ -344,7 +529,6 @@ async function handleVoucherModal(interaction) {
       });
     }
 
-    // 2. ตรวจสอบยอดเงินว่าถูกต้องหรือไม่
     if (redeemRes.amount < requiredSatang) {
       return interaction.editReply({
         embeds: [
@@ -357,7 +541,6 @@ async function handleVoucherModal(interaction) {
       });
     }
 
-    // 3. ยิงเคลมคีย์จากระบบหลังบ้าน (Stock-based)
     const apiRes = await axios.post(`${API_URL}/licenses/claim-stock`, {
       discordId,
       expDays: days,
@@ -378,7 +561,6 @@ async function handleVoucherModal(interaction) {
 
     const key = apiRes.data.key;
 
-    // 4. ส่งข้อความส่วนตัว (DM) ไปหาผู้ใช้พร้อมแนบคีย์
     let dmSent = false;
     try {
       await interaction.user.send({
@@ -403,24 +585,20 @@ async function handleVoucherModal(interaction) {
       durationLabel,
       amount: redeemRes.amount,
       key,
+      method: "truemoney", // ← เพิ่ม
     });
 
-    // 5. มอบยศ (Role) อัตโนมัติ
     try {
       const member = interaction.member;
-      if (member && ROLE_ID) {
-        await member.roles.add(ROLE_ID);
-      }
+      if (member && ROLE_ID) await member.roles.add(ROLE_ID);
     } catch (err) {
       console.error("[Voucher] Failed to assign role:", err);
     }
 
-    // อัปเดตสถิติสต็อกบนหน้า Verify Panel
     updateVerifyMessage(interaction.client).catch((err) =>
       console.error("[Stats] Failed to update stats panel:", err.message),
     );
 
-    // 6. แจ้งเตือนยืนยันบนช่องดิสคอร์ดชั่วคราว
     const successDesc = dmSent
       ? `ซื้อคีย์แบบ **${durationLabel}** สำเร็จ!\nบอทได้ส่งรหัสคีย์เข้าไปยังข้อความส่วนตัว (DM) ของคุณเรียบร้อยแล้ว`
       : `ซื้อคีย์แบบ **${durationLabel}** สำเร็จ!\n\n⚠️ **เนื่องจากคุณปิดข้อความส่วนตัว (DM) บอทจึงแสดงคีย์ตรงนี้แทน:**\n\`\`\`\n${key}\n\`\`\`\n*โปรดคัดลอกรหัสนี้เก็บไว้ทันที (ข้อความนี้เห็นเฉพาะคุณคนเดียว)*`;
@@ -463,14 +641,10 @@ async function handleVoucherModal(interaction) {
 
 function formatCooldown(cooldown) {
   if (!cooldown?.availableAt) return "Please wait before trying again.";
-
   const availableAt = new Date(cooldown.availableAt);
-  const time = `<t:${Math.floor(availableAt.getTime() / 1000)}:R>`; // Discord timestamp
-
+  const time = `<t:${Math.floor(availableAt.getTime() / 1000)}:R>`;
   return `Cooldown active — you can reset again ${time}`;
 }
-
-// ---- Fallback Error Reply ----
 
 async function safeReplyError(interaction) {
   if (!interaction.replied && !interaction.deferred) {
