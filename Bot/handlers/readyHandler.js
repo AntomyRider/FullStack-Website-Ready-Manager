@@ -42,18 +42,20 @@ async function updateVerifyMessage(client) {
     // 1. ดึงสถิติจาก Server
     let stats = null;
     let total = null;
+    let recentPurchases = [];
     try {
       const res = await axios.get(`${API_URL}/licenses/stock-stats`);
       if (res.data.success) {
         stats = res.data.stats;
         total = res.data.total;
+        recentPurchases = res.data.recentPurchases || [];
       }
     } catch (apiErr) {
       console.error("⚠️ ไม่สามารถดึงสถิติสต็อกจาก Server ได้:", apiErr.message);
     }
 
     // ตรวจสอบการเปลี่ยนแปลงของข้อมูลเพื่อประหยัด API rate limit
-    const currentStatsString = JSON.stringify({ stats, total });
+    const currentStatsString = JSON.stringify({ stats, total, recentPurchases });
 
     const messages = await channel.messages.fetch({ limit: 20 });
     const botMsg = messages.find((m) => m.author.id === client.user.id);
@@ -66,7 +68,7 @@ async function updateVerifyMessage(client) {
     }
 
     // 2. สร้าง Embed และ Row
-    const embed = makeVerifyEmbed(EMBED_IMAGE_URL, stats, total);
+    const embed = makeVerifyEmbed(EMBED_IMAGE_URL, stats, total, recentPurchases);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()

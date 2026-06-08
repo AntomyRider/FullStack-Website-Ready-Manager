@@ -76,6 +76,49 @@ async function handleBankSlipMessage(message) {
       return;
     }
 
+    // ─── Step 1.5: ตรวจสลิปซ้ำล่วงหน้า (Check Duplicate Slip) ──────────
+    await processingMsg.edit({
+      embeds: [
+        makeEmbed(
+          "🔍 Checking Slip History...",
+          "Checking if slip has already been used...",
+          EmbedColor.INFO,
+        ),
+      ],
+    });
+
+    try {
+      const dupCheck = await axios.post(`${API_URL}/licenses/check-duplicate`, {
+        payload,
+        secretToken: BOT_SECRET,
+      });
+
+      if (dupCheck.data.success && dupCheck.data.duplicate) {
+        await processingMsg.edit({
+          embeds: [
+            makeEmbed(
+              "❌ สลิปนี้เคยใช้งานไปแล้ว",
+              "สลิปโอนเงินนี้เคยถูกใช้งานเพื่อสั่งซื้อคีย์ไปแล้วในระบบ ไม่สามารถใช้งานซ้ำได้อีก",
+              EmbedColor.ERROR,
+            ),
+          ],
+        });
+        return;
+      }
+    } catch (err) {
+      console.error("[BankSlip] Error checking slip duplication:", err.message);
+      await processingMsg.edit({
+        embeds: [
+          makeEmbed(
+            "❌ ไม่สามารถตรวจสอบความถูกต้องได้",
+            "ไม่สามารถติดต่อเซิร์ฟเวอร์หลังบ้านได้ กรุณาติดต่อแอดมิน",
+            EmbedColor.ERROR,
+          ),
+        ],
+      });
+      return;
+    }
+
     // ─── Step 2: ยืนยันสลิปกับ EasySlip ───────────────────────────────
     await processingMsg.edit({
       embeds: [
@@ -177,14 +220,26 @@ async function handleBankSlipMessage(message) {
       discordId,
       expDays: days,
       secretToken: BOT_SECRET,
+      amount: transferredBaht,
+      paymentMethod: "bank",
+      transRef: transRef,
+      payload: payload,
+      senderName: senderName,
+      senderBank: senderBank,
     });
 
     if (!apiRes.data.success) {
-      await message.channel.send({
+      const errCode = apiRes.data.code;
+      let errMsg = apiRes.data.message || "คลังคีย์อาจหมด โปรดติดต่อแอดมิน";
+      if (errCode === "DUPLICATE_SLIP") {
+        errMsg = "สลิปโอนเงินนี้เคยใช้งานไปแล้วในการทำรายการอื่น ขออภัยในความไม่สะดวก";
+      }
+
+      await processingMsg.edit({
         embeds: [
           makeEmbed(
             "❌ ออกคีย์ไม่สำเร็จ",
-            apiRes.data.message || "คลังคีย์อาจหมด โปรดติดต่อแอดมิน",
+            errMsg,
             EmbedColor.ERROR,
           ),
         ],
@@ -289,7 +344,14 @@ function resolvePackageByAmount(baht) {
     { price: PRICE_30_DAYS, days: 30, durationLabel: "30 วัน" },
     { price: PRICE_LIFETIME, days: 0, durationLabel: "Lifetime (ถาวร)" },
   ];
-  return map.find((p) => p.price === baht) ?? null;
+  
+  // ค้นหาแพ็กเกจทั้งหมดที่ราคา <= ยอดเงินที่โอนเข้ามา
+  const affordable = map.filter((p) => p.price <= baht);
+  if (affordable.length === 0) return null;
+  
+  // เรียงจากแพ็กเกจที่ราคาสูงสุดลงมา เพื่อเลือกแพ็กเกจที่ดีที่สุดที่ยอดโอนโอนถึง
+  affordable.sort((a, b) => b.price - a.price);
+  return affordable[0];
 }
 
 module.exports = { handleBankSlipMessage };

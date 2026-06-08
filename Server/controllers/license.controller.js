@@ -592,7 +592,17 @@ exports.redeemKey = async (req, res) => {
 
 exports.claimStock = async (req, res) => {
   try {
-    const { discordId, expDays, secretToken } = req.body;
+    const {
+      discordId,
+      expDays,
+      secretToken,
+      amount,
+      paymentMethod = "bank",
+      transRef,
+      payload,
+      senderName,
+      senderBank
+    } = req.body;
 
     if (!secretToken || secretToken !== process.env.BOT_SECRET) {
       return res.status(401).json({ success: false, message: "Unauthorized token" });
@@ -602,16 +612,45 @@ exports.claimStock = async (req, res) => {
       return res.status(400).json({ success: false, message: "discordId is required" });
     }
 
-    // Run transactional query to isolate claims and prevent race conditions
+    const expDaysVal = parseInt(expDays);
+    const amountVal = parseFloat(amount) || 0;
+
+    // Run transactional query to isolate claims, prevent race conditions, and record history
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Get all claimed keys
+      // 1. ตรวจสอบการชำระเงินซ้ำ (ถ้ามีข้อมูลการชำระเงินเข้ามา)
+      if (paymentMethod === "bank" && (transRef || payload)) {
+        if (transRef) {
+          const dupRef = await tx.verifiedSlip.findUnique({ where: { transRef } });
+          if (dupRef) throw new Error("DUPLICATE_SLIP");
+        }
+        if (payload) {
+          const dupPayload = await tx.verifiedSlip.findUnique({ where: { payload } });
+          if (dupPayload) throw new Error("DUPLICATE_SLIP");
+        }
+
+        // บันทึกสลิป
+        await tx.verifiedSlip.create({
+          data: {
+            transRef: transRef || `MANUAL-${Date.now()}`,
+            payload: payload || `MANUAL-PAYLOAD-${Date.now()}`,
+            discordId,
+            amount: amountVal,
+          }
+        });
+      } else if (paymentMethod === "truemoney" && transRef) {
+        // สำหรับทรูมันนี่ ใช้ transRef (ลิงก์ซอง) ในการเช็คซ้ำในประวัติการซื้อ
+        const dupVoucher = await tx.purchaseHistory.findUnique({
+          where: { transRef }
+        });
+        if (dupVoucher) throw new Error("DUPLICATE_VOUCHER");
+      }
+
+      // 2. หาคีย์เคลมจากสต็อก
       const claims = await tx.claim.findMany({
         select: { key: true }
       });
       const claimedKeys = claims.map(c => c.key);
 
-      // 2. Build expDays query condition
-      const expDaysVal = parseInt(expDays);
       const queryWhere = {
         status: "Enable",
         hwid: null,
@@ -630,7 +669,6 @@ exports.claimStock = async (req, res) => {
         queryWhere.expDays = expDaysVal;
       }
 
-      // 3. Find first available license of specified type
       const license = await tx.license.findFirst({
         where: queryWhere
       });
@@ -639,11 +677,25 @@ exports.claimStock = async (req, res) => {
         throw new Error("OUT_OF_STOCK");
       }
 
-      // 4. Create claim record immediately
+      // 3. สร้าง Claim Record
       await tx.claim.create({
         data: {
           key: license.key,
           discordId: discordId
+        }
+      });
+
+      // 4. บันทึกประวัติการชื้อ (PurchaseHistory)
+      await tx.purchaseHistory.create({
+        data: {
+          discordId,
+          key: license.key,
+          amount: amountVal,
+          days: isNaN(expDaysVal) ? 0 : expDaysVal,
+          paymentMethod,
+          transRef,
+          senderName,
+          senderBank,
         }
       });
 
@@ -665,6 +717,54 @@ exports.claimStock = async (req, res) => {
         message: "No keys available in stock for this duration"
       });
     }
+    if (error.message === "DUPLICATE_SLIP") {
+      return res.status(409).json({
+        success: false,
+        code: "DUPLICATE_SLIP",
+        message: "สลิปนี้เคยใช้งานไปแล้วในระบบ"
+      });
+    }
+    if (error.message === "DUPLICATE_VOUCHER") {
+      return res.status(409).json({
+        success: false,
+        code: "DUPLICATE_VOUCHER",
+        message: "ซองอั่งเปานี้เคยถูกเคลมในระบบไปแล้ว"
+      });
+    }
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.checkDuplicateSlip = async (req, res) => {
+  try {
+    const { payload, secretToken } = req.body;
+
+    if (!secretToken || secretToken !== process.env.BOT_SECRET) {
+      return res.status(401).json({ success: false, message: "Unauthorized token" });
+    }
+
+    if (!payload) {
+      return res.status(400).json({ success: false, message: "payload is required" });
+    }
+
+    const existingSlip = await prisma.verifiedSlip.findUnique({
+      where: { payload },
+    });
+
+    if (existingSlip) {
+      return res.status(200).json({
+        success: true,
+        duplicate: true,
+        message: "สลิปนี้เคยใช้งานไปแล้วในระบบ",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      duplicate: false,
+      message: "สลิปนี้ยังไม่เคยใช้งาน",
+    });
+  } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -686,12 +786,15 @@ exports.getStockStats = async (req, res) => {
         queryWhere.expDays = expDaysVal;
       }
 
-      const sold = await prisma.license.count({
+      // 1. นับยอดขายจากตาราง PurchaseHistory ตามแพ็กเกจ
+      const daysParam = expDaysVal === "lifetime" ? 0 : expDaysVal;
+      const sold = await prisma.purchaseHistory.count({
         where: {
-          ...queryWhere,
-          key: { in: claimedKeys }
+          days: daysParam
         }
       });
+
+      // 2. นับคีย์คงเหลือในตู้ (ที่ยังไม่ได้ถูกเคลม)
       const remaining = await prisma.license.count({
         where: {
           ...queryWhere,
@@ -711,7 +814,9 @@ exports.getStockStats = async (req, res) => {
       lifetime: await getCounts("lifetime"),
     };
 
-    const totalSold = claimedKeys.length;
+    // นับยอดขายรวมจากตาราง PurchaseHistory
+    const totalSold = await prisma.purchaseHistory.count();
+
     const totalRemaining = await prisma.license.count({
       where: {
         status: "Enable",
@@ -721,13 +826,25 @@ exports.getStockStats = async (req, res) => {
       }
     });
 
+    // ดึงรายชื่อผู้ซื้อล่าสุด 10 คน
+    const recentPurchases = await prisma.purchaseHistory.findMany({
+      orderBy: { purchasedAt: "desc" },
+      take: 10,
+      select: {
+        discordId: true,
+        days: true,
+        purchasedAt: true
+      }
+    });
+
     return res.status(200).json({
       success: true,
       stats,
       total: {
         sold: totalSold,
         remaining: totalRemaining
-      }
+      },
+      recentPurchases
     });
 
   } catch (error) {

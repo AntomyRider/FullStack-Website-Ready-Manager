@@ -58,3 +58,32 @@ model User {
   role      String    @default("admin")
   createdAt DateTime  @default(now())
 }
+
+model VerifiedSlip {
+  id         Int      @id @default(autoincrement())
+  transRef   String   @unique
+  payload    String   @unique @db.VarChar(500)
+  discordId  String
+  amount     Float
+  verifiedAt DateTime @default(now())
+
+  @@index([transRef])
+  @@index([payload])
+}
+
+model PurchaseHistory {
+  id            Int      @id @default(autoincrement())
+  discordId     String
+  key           String
+  amount        Float
+  days          Int
+  paymentMethod String   @default("bank")
+  transRef      String?  @unique
+  senderName    String?
+  senderBank    String?
+  purchasedAt   DateTime @default(now())
+
+  @@index([discordId])
+  @@index([purchasedAt])
+}
+

@@ -61,7 +61,7 @@ function makeWarningEmbed(title, description) {
 /**
  * Embed ยืนยัน Key (ส่งใน verify channel)
  */
-function makeVerifyEmbed(imageUrl, stats, total) {
+function makeVerifyEmbed(imageUrl, stats, total, recentPurchases) {
   const embed = new EmbedBuilder()
     .setDescription(
       [
@@ -80,7 +80,7 @@ function makeVerifyEmbed(imageUrl, stats, total) {
 
   if (stats && total) {
     embed.addFields({
-      name: "",
+      name: " ",
       value: [
         "```",
         `⭐ TOTAL STOCK KEYS ⭐`,
@@ -93,6 +93,20 @@ function makeVerifyEmbed(imageUrl, stats, total) {
         `💰 SOLD - ${total.sold} Keys`,
         "```",
       ].join("\n"),
+      inline: false,
+    });
+  }
+
+  if (recentPurchases && recentPurchases.length > 0) {
+    const list = recentPurchases.map((p) => {
+      const pkg = p.days === 0 ? "Lifetime (ถาวร)" : `${p.days} วัน`;
+      const timeTag = `<t:${Math.floor(new Date(p.purchasedAt).getTime() / 1000)}:R>`;
+      return `• <@${p.discordId}> ซื้อแพ็กเกจ **${pkg}** (${timeTag})`;
+    });
+
+    embed.addFields({
+      name: "🛒 ผู้ซื้อล่าสุด (Recent Purchases)",
+      value: list.join("\n"),
       inline: false,
     });
   }

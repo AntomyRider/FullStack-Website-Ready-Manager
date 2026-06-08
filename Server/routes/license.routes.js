@@ -14,7 +14,8 @@ const {
   resetHwid,
   redeemKey,
   claimStock,
-  getStockStats
+  getStockStats,
+  checkDuplicateSlip
 } = require("../controllers/license.controller");
 
 router.post("/licenses/create", protect, createKey);
@@ -29,5 +30,6 @@ router.post('/licenses/claim', claimKey)
 router.post('/licenses/reset-hwid', resetHwid)
 router.post('/licenses/redeem', redeemKey)
 router.post('/licenses/claim-stock', claimStock)
+router.post('/licenses/check-duplicate', checkDuplicateSlip)
 router.get('/licenses/stock-stats', getStockStats)
 module.exports = router;
