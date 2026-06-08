@@ -67,14 +67,27 @@ const UsedByBadge = ({ usedBy }) => {
 
 const DaysCell = ({ expDays, expireAt }) => {
   const isLifetime = !expDays || expDays === 0
-  const label = isLifetime ? "Lifetime" : `${expDays || Math.ceil((new Date(expireAt) - new Date()) / 86_400_000)} days`
+  const isExpired = expireAt && new Date(expireAt) < new Date()
+
+  let label = ""
+  let textColorClass = "text-emerald-400"
+
+  if (isLifetime) {
+    label = "Lifetime"
+  } else if (isExpired) {
+    label = "Expired"
+    textColorClass = "text-red-400 font-semibold"
+  } else {
+    label = `${expDays} days`
+  }
+
   const daysLeft = expireAt ? Math.ceil((new Date(expireAt) - new Date()) / 86_400_000) : null
-  const pct = isLifetime ? 100 : (daysLeft != null && expDays ? Math.min(100, Math.max(0, Math.round((daysLeft / expDays) * 100))) : null)
-  const color = isLifetime ? "bg-emerald-300" : (pct == null ? "bg-zinc-700" : pct < 15 ? "bg-red-400" : pct < 40 ? "bg-amber-300" : "bg-emerald-300")
+  const pct = isLifetime ? 100 : (isExpired ? 0 : (daysLeft != null && expDays ? Math.min(100, Math.max(0, Math.round((daysLeft / expDays) * 100))) : null))
+  const color = isLifetime ? "bg-emerald-400" : (isExpired ? "bg-red-400" : (pct == null ? "bg-zinc-700" : pct < 15 ? "bg-red-400" : pct < 40 ? "bg-amber-300" : "bg-emerald-400"))
 
   return (
     <div className="space-y-1">
-      <p className="text-[12px] tabular-nums text-zinc-400">{label}</p>
+      <p className={`text-[12px] tabular-nums ${textColorClass}`}>{label}</p>
       <div className="h-1 w-14 overflow-hidden rounded-full bg-zinc-800">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct ?? 0}%` }} />
       </div>

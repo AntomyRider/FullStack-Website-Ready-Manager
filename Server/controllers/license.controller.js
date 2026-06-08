@@ -929,8 +929,8 @@ exports.heartbeatKey = async (req, res) => {
           updatedData.totalUsageSeconds = license.totalUsageSeconds + diffSeconds;
         }
       }
-      // Instantly clear heartbeat to mark offline
-      updatedData.lastHeartbeatAt = null;
+      // Instantly mark offline by setting lastHeartbeatAt to 7 minutes and 10 seconds ago (so it is older than 7-minute online threshold)
+      updatedData.lastHeartbeatAt = new Date(now.getTime() - (7 * 60 + 10) * 1000);
       updatedData.currentSessionStartAt = null;
     } else {
       updatedData.lastHeartbeatAt = now;

@@ -41,7 +41,7 @@ const UserStats = () => {
 
   useEffect(() => {
     loadData()
-    const id = setInterval(loadData, 30_000)
+    const id = setInterval(loadData, 10_000)
     return () => clearInterval(id)
   }, [loadData])
 
