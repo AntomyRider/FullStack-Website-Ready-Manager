@@ -19,7 +19,7 @@ async function migrate() {
     let count = 0;
     for (const claim of claims) {
       // Check if this key already has a purchase history record
-      const existing = await prisma.purchaseHistory.findUnique({
+      const existing = await prisma.purchaseHistory.findFirst({
         where: { key: claim.key }
       });
 
