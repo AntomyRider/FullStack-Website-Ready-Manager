@@ -235,62 +235,98 @@ const getDockerLogs = (containerName, lines) => {
   });
 };
 
-// Parser for Docker Remote logs (demux stream + timestamps parsing)
+// Parser for Docker Remote logs (hybrid demux stream & raw text stream + timestamps parsing)
 function parseDockerLogs(buffer) {
   const entries = [];
-  let offset = 0;
-  while (offset + 8 <= buffer.length) {
-    const streamType = buffer.readUInt8(offset);
-    const frameLen = buffer.readUInt32BE(offset + 4);
-    if (offset + 8 + frameLen > buffer.length) {
-      break; // Incomplete frame
-    }
-    const payload = buffer.toString("utf8", offset + 8, offset + 8 + frameLen);
-    const level = streamType === 2 ? "error" : "info";
+  if (!buffer || buffer.length === 0) return entries;
 
-    // Split payload by lines
+  // Detect if buffer uses Docker's multiplexed (demux) format
+  let isMultiplexed = false;
+  if (buffer.length >= 8) {
+    const streamType = buffer.readUInt8(0);
+    const p1 = buffer.readUInt8(1);
+    const p2 = buffer.readUInt8(2);
+    const p3 = buffer.readUInt8(3);
+    const frameLen = buffer.readUInt32BE(4);
+
+    if (
+      (streamType === 0 || streamType === 1 || streamType === 2) &&
+      p1 === 0 && p2 === 0 && p3 === 0 &&
+      (8 + frameLen <= buffer.length)
+    ) {
+      isMultiplexed = true;
+    }
+  }
+
+  if (isMultiplexed) {
+    let offset = 0;
+    while (offset + 8 <= buffer.length) {
+      const streamType = buffer.readUInt8(offset);
+      const frameLen = buffer.readUInt32BE(offset + 4);
+      if (offset + 8 + frameLen > buffer.length) {
+        break; // Incomplete frame
+      }
+      const payload = buffer.toString("utf8", offset + 8, offset + 8 + frameLen);
+      const level = streamType === 2 ? "error" : "info";
+
+      const lines = payload.split("\n");
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        parseLogLine(trimmed, level, entries);
+      }
+      offset += 8 + frameLen;
+    }
+  } else {
+    // Treat as raw stream (e.g. when tty: true is enabled in Docker)
+    const payload = buffer.toString("utf8");
     const lines = payload.split("\n");
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
-
-      const tsMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s(.*)$/);
-      if (tsMatch) {
-        const rawContent = tsMatch[2];
-        let parsedLevel = level;
-        if (/error|failed|❌/i.test(rawContent)) {
-          parsedLevel = "error";
-        } else if (/warn|⚠️/i.test(rawContent)) {
-          parsedLevel = "warn";
-        } else if (/info|✅/i.test(rawContent)) {
-          parsedLevel = "info";
-        }
-
-        entries.push({
-          timestamp: new Date(tsMatch[1]).toISOString(),
-          level: parsedLevel,
-          raw: rawContent,
-        });
-      } else {
-        let parsedLevel = level;
-        if (/error|failed|❌/i.test(trimmed)) {
-          parsedLevel = "error";
-        } else if (/warn|⚠️/i.test(trimmed)) {
-          parsedLevel = "warn";
-        } else if (/info|✅/i.test(trimmed)) {
-          parsedLevel = "info";
-        }
-
-        entries.push({
-          timestamp: new Date().toISOString(),
-          level: parsedLevel,
-          raw: trimmed,
-        });
-      }
+      parseLogLine(trimmed, "info", entries);
     }
-    offset += 8 + frameLen;
   }
+
   return entries;
+}
+
+function parseLogLine(line, defaultLevel, entries) {
+  // Regex to extract timestamps appended by Docker's timestamps=true option
+  const tsMatch = line.match(/^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s(.*)$/);
+  if (tsMatch) {
+    const timestampStr = tsMatch[1];
+    const rawContent = tsMatch[2];
+    let parsedLevel = defaultLevel;
+    if (/error|failed|❌/i.test(rawContent)) {
+      parsedLevel = "error";
+    } else if (/warn|⚠️/i.test(rawContent)) {
+      parsedLevel = "warn";
+    } else if (/info|✅/i.test(rawContent)) {
+      parsedLevel = "info";
+    }
+
+    entries.push({
+      timestamp: new Date(timestampStr).toISOString(),
+      level: parsedLevel,
+      raw: rawContent,
+    });
+  } else {
+    let parsedLevel = defaultLevel;
+    if (/error|failed|❌/i.test(line)) {
+      parsedLevel = "error";
+    } else if (/warn|⚠️/i.test(line)) {
+      parsedLevel = "warn";
+    } else if (/info|✅/i.test(line)) {
+      parsedLevel = "info";
+    }
+
+    entries.push({
+      timestamp: new Date().toISOString(),
+      level: parsedLevel,
+      raw: line,
+    });
+  }
 }
 
 exports.getLogs = async (req, res) => {
@@ -306,15 +342,23 @@ exports.getLogs = async (req, res) => {
     const containerName = service === "bot" ? "license_bot" : "license_api";
     const socketExists = fs.existsSync("/var/run/docker.sock");
 
+    console.log(`[getLogs] Request logs for ${service} (${containerName}). Socket exists: ${socketExists}`);
+
     let entries = [];
     let source = "docker";
 
     if (socketExists) {
       try {
         const buffer = await getDockerLogs(containerName, Math.min(+lines, 1000));
+        console.log(`[getLogs] Docker Socket returned buffer of size ${buffer.length} bytes`);
+        if (buffer.length > 0) {
+          console.log(`[getLogs] Buffer preview (hex): ${buffer.slice(0, 50).toString("hex")}`);
+          console.log(`[getLogs] Buffer preview (utf8): ${buffer.slice(0, 100).toString("utf8")}`);
+        }
         entries = parseDockerLogs(buffer);
+        console.log(`[getLogs] Parsed ${entries.length} log entries`);
       } catch (err) {
-        console.error("Failed to fetch logs from Docker socket:", err.message);
+        console.error("[getLogs] Failed to fetch logs from Docker socket:", err.message);
         source = "fallback-files";
       }
     } else {
