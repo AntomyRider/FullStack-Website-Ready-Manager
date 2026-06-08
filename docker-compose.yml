@@ -50,6 +50,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      EASYSLIP_API_KEY: 50eb9b32-31c3-48ae-a6e2-fee943a30515
     depends_on:
       - server
     networks:
