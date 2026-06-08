@@ -66,7 +66,7 @@ const UsedByBadge = ({ usedBy }) => {
 }
 
 const DaysCell = ({ expDays, expireAt }) => {
-  const isLifetime = !expireAt || expDays === 0
+  const isLifetime = !expDays || expDays === 0
   const label = isLifetime ? "Lifetime" : `${expDays || Math.ceil((new Date(expireAt) - new Date()) / 86_400_000)} days`
   const daysLeft = expireAt ? Math.ceil((new Date(expireAt) - new Date()) / 86_400_000) : null
   const pct = isLifetime ? 100 : (daysLeft != null && expDays ? Math.min(100, Math.max(0, Math.round((daysLeft / expDays) * 100))) : null)

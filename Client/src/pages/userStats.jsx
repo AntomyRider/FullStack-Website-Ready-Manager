@@ -84,10 +84,24 @@ const UserStats = () => {
 
     // Type filter
     if (typeFilter === "lifetime") {
-      result = result.filter((l) => !l.expireAt || l.expDays === 0)
+      result = result.filter((l) => !l.expDays || l.expDays === 0)
     } else if (typeFilter === "days") {
-      result = result.filter((l) => l.expireAt && (l.expDays === null || l.expDays > 0))
+      result = result.filter((l) => l.expDays > 0)
     }
+
+    // Sort: Online first, then offline (most recently active first), then never connected
+    result.sort((a, b) => {
+      if (a.isOnline && !b.isOnline) return -1
+      if (!a.isOnline && b.isOnline) return 1
+
+      if (a.lastHeartbeatAt && b.lastHeartbeatAt) {
+        return new Date(b.lastHeartbeatAt).getTime() - new Date(a.lastHeartbeatAt).getTime()
+      }
+      if (a.lastHeartbeatAt && !b.lastHeartbeatAt) return -1
+      if (!a.lastHeartbeatAt && b.lastHeartbeatAt) return 1
+
+      return 0
+    })
 
     return result
   }, [licenses, search, statusFilter, typeFilter])
@@ -170,7 +184,7 @@ const UserStats = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredLicenses.map((license) => {
             const isOnline = license.isOnline
-            const isLifetime = !license.expireAt || license.expDays === 0
+            const isLifetime = !license.expDays || license.expDays === 0
             const days = license.expDays || (license.expireAt ? Math.ceil((new Date(license.expireAt) - new Date(license.activatedAt || license.createdAt)) / 86_400_000) : 0)
             const typeLabel = isLifetime ? "Lifetime" : `${days} Days`
             const hasConnected = !!license.lastHeartbeatAt

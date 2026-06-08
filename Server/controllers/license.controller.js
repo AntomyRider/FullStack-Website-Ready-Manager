@@ -894,7 +894,7 @@ exports.getStockStats = async (req, res) => {
 
 exports.heartbeatKey = async (req, res) => {
   try {
-    const { key, hwid } = req.body;
+    const { key, hwid, isOffline } = req.body;
 
     if (!key || !hwid) {
       return res.status(400).json({ success: false, message: "key and hwid are required" });
@@ -917,24 +917,39 @@ exports.heartbeatKey = async (req, res) => {
     }
 
     const now = new Date();
-    let updatedData = {
-      lastHeartbeatAt: now
-    };
+    let updatedData = {};
 
-    if (license.lastHeartbeatAt) {
-      const last = new Date(license.lastHeartbeatAt);
-      const diffSeconds = Math.floor((now.getTime() - last.getTime()) / 1000);
+    if (isOffline) {
+      if (license.lastHeartbeatAt) {
+        const last = new Date(license.lastHeartbeatAt);
+        const diffSeconds = Math.floor((now.getTime() - last.getTime()) / 1000);
+        
+        // Accumulate final seconds if within 7 minutes
+        if (diffSeconds > 0 && diffSeconds <= 7 * 60) {
+          updatedData.totalUsageSeconds = license.totalUsageSeconds + diffSeconds;
+        }
+      }
+      // Instantly clear heartbeat to mark offline
+      updatedData.lastHeartbeatAt = null;
+      updatedData.currentSessionStartAt = null;
+    } else {
+      updatedData.lastHeartbeatAt = now;
 
-      // If the heartbeat is within a reasonable interval (e.g. 7 minutes), accumulate usage time
-      if (diffSeconds > 0 && diffSeconds <= 7 * 60) {
-        updatedData.totalUsageSeconds = license.totalUsageSeconds + diffSeconds;
+      if (license.lastHeartbeatAt) {
+        const last = new Date(license.lastHeartbeatAt);
+        const diffSeconds = Math.floor((now.getTime() - last.getTime()) / 1000);
+
+        // If the heartbeat is within a reasonable interval (e.g. 7 minutes), accumulate usage time
+        if (diffSeconds > 0 && diffSeconds <= 7 * 60) {
+          updatedData.totalUsageSeconds = license.totalUsageSeconds + diffSeconds;
+        } else {
+          // If it was offline (longer than 7 minutes), reset session start
+          updatedData.currentSessionStartAt = now;
+        }
       } else {
-        // If it was offline (longer than 7 minutes), reset session start
+        // First heartbeat
         updatedData.currentSessionStartAt = now;
       }
-    } else {
-      // First heartbeat
-      updatedData.currentSessionStartAt = now;
     }
 
     await prisma.license.update({
@@ -944,7 +959,7 @@ exports.heartbeatKey = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Heartbeat recorded successfully"
+      message: isOffline ? "Offline state recorded successfully" : "Heartbeat recorded successfully"
     });
 
   } catch (error) {
