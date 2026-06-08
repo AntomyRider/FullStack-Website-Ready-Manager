@@ -19,6 +19,16 @@ app.use(cors({
 }))
 app.use(express.json())
 
+// Request logging middleware
+app.use((req, res, next) => {
+    const start = Date.now()
+    res.on("finish", () => {
+        const duration = Date.now() - start
+        console.log(`[INFO] ${new Date().toISOString()} - ${req.method} ${req.originalUrl} - Status: ${res.statusCode} - ${duration}ms`)
+    })
+    next()
+})
+
 app.use("/api", licenseRouter);
 app.use("/api", authRouter);
 app.use("/api", userRouter);

@@ -20,6 +20,10 @@ model License {
   expireAt           DateTime?
   activatedAt        DateTime?
 
+  lastHeartbeatAt      DateTime?
+  currentSessionStartAt DateTime?
+  totalUsageSeconds    Int                    @default(0)
+
   resetAt            DateTime?
   resetCooldownAt    DateTime?
   resetCount         Int      @default(0)

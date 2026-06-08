@@ -67,6 +67,18 @@ exports.listKey = async (req, res) => {
     // Build a map of key → discordId for O(1) lookup
     const claimMap = new Map(claims.map((c) => [c.key, c.discordId]));
 
+    const formatDuration = (ms) => {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      if (days > 0) return `${days}d ${hours % 24}h`;
+      if (hours > 0) return `${hours}h ${minutes % 60}m`;
+      if (minutes > 0) return `${minutes}m`;
+      return `${seconds}s`;
+    };
+
     const result = licenses
       // Keys without HWID (unactivated) come first
       .sort((a, b) => {
@@ -74,10 +86,37 @@ exports.listKey = async (req, res) => {
         if (a.hwid && !b.hwid) return 1;
         return 0;
       })
-      .map((license) => ({
-        ...license,
-        discordId: claimMap.get(license.key) ?? null,
-      }));
+      .map((license) => {
+        const now = new Date();
+        const isOnline = license.lastHeartbeatAt 
+          ? (now.getTime() - new Date(license.lastHeartbeatAt).getTime() <= 7 * 60 * 1000)
+          : false;
+
+        let durationText = "-";
+        if (isOnline) {
+          const sessionStart = license.currentSessionStartAt ? new Date(license.currentSessionStartAt) : new Date(license.lastHeartbeatAt);
+          const diff = now.getTime() - sessionStart.getTime();
+          durationText = `Online (${formatDuration(diff)})`;
+        } else if (license.lastHeartbeatAt) {
+          const diff = now.getTime() - new Date(license.lastHeartbeatAt).getTime();
+          durationText = `Offline (${formatDuration(diff)})`;
+        }
+
+        let usagePercentage = 0;
+        if (license.activatedAt) {
+          const endTime = (license.expireAt && new Date(license.expireAt) < now) ? new Date(license.expireAt) : now;
+          const totalTime = Math.max(1, (endTime.getTime() - new Date(license.activatedAt).getTime()) / 1000);
+          usagePercentage = Math.min(100, Math.round((license.totalUsageSeconds / totalTime) * 100));
+        }
+
+        return {
+          ...license,
+          discordId: claimMap.get(license.key) ?? null,
+          isOnline,
+          durationText,
+          usagePercentage
+        };
+      });
 
     return res.status(200).json(result);
   } catch (error) {
@@ -847,6 +886,95 @@ exports.getStockStats = async (req, res) => {
       recentPurchases
     });
 
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.heartbeatKey = async (req, res) => {
+  try {
+    const { key, hwid } = req.body;
+
+    if (!key || !hwid) {
+      return res.status(400).json({ success: false, message: "key and hwid are required" });
+    }
+
+    const license = await prisma.license.findUnique({
+      where: { key }
+    });
+
+    if (!license) {
+      return res.status(404).json({ success: false, message: "License not found" });
+    }
+
+    if (license.status !== "Enable") {
+      return res.status(403).json({ success: false, message: "License is disabled" });
+    }
+
+    if (license.hwid && license.hwid !== hwid) {
+      return res.status(403).json({ success: false, message: "HWID mismatch" });
+    }
+
+    const now = new Date();
+    let updatedData = {
+      lastHeartbeatAt: now
+    };
+
+    if (license.lastHeartbeatAt) {
+      const last = new Date(license.lastHeartbeatAt);
+      const diffSeconds = Math.floor((now.getTime() - last.getTime()) / 1000);
+
+      // If the heartbeat is within a reasonable interval (e.g. 7 minutes), accumulate usage time
+      if (diffSeconds > 0 && diffSeconds <= 7 * 60) {
+        updatedData.totalUsageSeconds = license.totalUsageSeconds + diffSeconds;
+      } else {
+        // If it was offline (longer than 7 minutes), reset session start
+        updatedData.currentSessionStartAt = now;
+      }
+    } else {
+      // First heartbeat
+      updatedData.currentSessionStartAt = now;
+    }
+
+    await prisma.license.update({
+      where: { key },
+      data: updatedData
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Heartbeat recorded successfully"
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getTopupStats = async (req, res) => {
+  try {
+    const bankStats = await prisma.purchaseHistory.aggregate({
+      where: { paymentMethod: "bank" },
+      _sum: { amount: true }
+    });
+
+    const truemoneyStats = await prisma.purchaseHistory.aggregate({
+      where: { paymentMethod: "truemoney" },
+      _sum: { amount: true }
+    });
+
+    const totalBank = bankStats._sum.amount || 0;
+    const totalTrueMoney = truemoneyStats._sum.amount || 0;
+    const totalTopup = totalBank + totalTrueMoney;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalBank,
+        totalTrueMoney,
+        totalTopup
+      }
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

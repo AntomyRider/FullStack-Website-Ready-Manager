@@ -23,6 +23,8 @@ services:
       context: ./Server
     container_name: license_api
     restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       NODE_ENV: production
       PORT: 3000

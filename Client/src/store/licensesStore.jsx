@@ -12,7 +12,11 @@ export const useLicensesStore = create((set, get) => ({
       const res = await listKey()
       const licenses = res.data || []
       const daysSet = new Set()
-      licenses.forEach(l => { if (l.expDays) daysSet.add(l.expDays) })
+      licenses.forEach(l => {
+        if (l.expDays !== null && l.expDays !== undefined) {
+          daysSet.add(l.expDays)
+        }
+      })
 
       set({
         licenses,

@@ -65,7 +65,7 @@ const TablePreview = ({ licenses }) => (
                                     {formatDate(license.expireAt)}
                                 </td>
                                 <td className="px-5 py-3 text-xs text-zinc-500">
-                                    {license.expDays}
+                                    {(!license.expDays || license.expDays === 0) ? "Lifetime" : `${license.expDays} days`}
                                 </td>
 
                                 <td className="px-5 py-3 text-xs text-zinc-500">

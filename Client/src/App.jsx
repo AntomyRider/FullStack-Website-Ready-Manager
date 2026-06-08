@@ -6,6 +6,7 @@ import Licenses from "./pages/licenses"
 import Login from "./pages/login"
 import ProtectedRoute from "./middlewares/protectedRoute"
 import Server from "./pages/server"
+import UserStats from "./pages/userStats"
 import { ToastProvider } from "./components/ui/ToastProvider"
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="/" element={<Main />}>
               <Route index element={<Dashboard />} />
               <Route path="licenses" element={<Licenses />} />
+              <Route path="user-stats" element={<UserStats />} />
               <Route path="server" element={<Server />} />
             </Route>
           </Route>

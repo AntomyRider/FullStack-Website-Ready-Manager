@@ -4,6 +4,17 @@ const { handleModal } = require("./interactions/modalHandler");
 
 async function onInteraction(interaction) {
   try {
+    const userId = interaction.user.id;
+    const username = interaction.user.tag;
+    let detail = "";
+    if (interaction.isButton()) detail = `Button [${interaction.customId}]`;
+    else if (interaction.isStringSelectMenu()) detail = `SelectMenu [${interaction.customId}] (Value: ${interaction.values.join(", ")})`;
+    else if (interaction.isModalSubmit()) detail = `Modal [${interaction.customId}]`;
+
+    if (detail) {
+      console.log(`[Interaction] ${new Date().toISOString()} - User: ${username} (${userId}) - Action: ${detail}`);
+    }
+
     if (interaction.isButton()) return handleButton(interaction);
     if (interaction.isStringSelectMenu()) return handleSelectMenu(interaction);
     if (interaction.isModalSubmit()) return handleModal(interaction);

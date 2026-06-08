@@ -70,7 +70,7 @@ const DownloadLicensesDialog = ({ open, setOpen, unboundKeys, boundKeys }) => {
 
   const selectOptions = useMemo(() => [
     { value: "all", label: "All days" },
-    ...availableDays.map((day) => ({ value: day, label: `${day} days` })),
+    ...availableDays.map((day) => ({ value: day, label: day === 0 ? "Lifetime" : `${day} days` })),
   ], [availableDays])
 
   return (

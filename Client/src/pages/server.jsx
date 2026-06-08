@@ -271,7 +271,7 @@ const StatsSection = ({ stats }) => {
   )
 }
 
-const LogsSection = ({ }) => {
+const LogPanel = ({ title, serviceName }) => {
   const [logs, setLogs]       = useState([])
   const [loading, setLoading] = useState(false)
   const [level, setLevel]     = useState("all")
@@ -281,80 +281,107 @@ const LogsSection = ({ }) => {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetchLogs({ lines, level: level === "all" ? undefined : level, search: search || undefined })
+      const res = await fetchLogs({ lines, level: level === "all" ? undefined : level, search: search || undefined, service: serviceName })
       if (res.success) setLogs(res.data ?? [])
     } finally {
       setLoading(false)
     }
-  }, [level, lines, search])
+  }, [level, lines, search, serviceName])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const id = setInterval(load, 10000)
+    return () => clearInterval(id)
+  }, [load])
 
   return (
-    <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800/60 rounded-lg px-3 h-8 flex-1 min-w-48">
-          <Search size={13} className="text-zinc-600 shrink-0" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search logs…"
-            className="bg-transparent outline-none text-zinc-300 text-[12px] placeholder:text-zinc-600 w-full"
+    <div className="bg-zinc-950/45 border border-zinc-800/40 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+      {/* Title & Toolbar */}
+      <div className="flex flex-col gap-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] font-semibold text-zinc-300 uppercase tracking-wider">{title}</span>
+          <button
+            onClick={load}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-zinc-900/40 border border-zinc-800/50 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+          >
+            <RefreshCcw size={12} className={loading ? "animate-spin text-emerald-300" : ""} />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="flex items-center gap-2 bg-zinc-900/60 border border-zinc-800/60 rounded-lg px-2.5 h-8 flex-1 min-w-32">
+            <Search size={12} className="text-zinc-600 shrink-0" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search logs…"
+              className="bg-transparent outline-none text-zinc-300 text-[11.5px] placeholder:text-zinc-700 w-full"
+            />
+          </div>
+
+          {/* Level Filter */}
+          <Select
+            value={level}
+            onChange={setLevel}
+            options={[
+              { value: "all", label: "All levels" },
+              { value: "error", label: "error", className: "text-red-400 font-medium" },
+              { value: "warn", label: "warn", className: "text-amber-400 font-medium" },
+              { value: "info", label: "info", className: "text-blue-400 font-medium" },
+              { value: "log", label: "log", className: "text-zinc-500" },
+            ]}
+            size="sm"
+            triggerClassName={`w-24 text-[11.5px] capitalize font-light ${
+              level === "error" ? "text-red-400" :
+              level === "warn" ? "text-amber-400" :
+              level === "info" ? "text-blue-400" :
+              level === "log" ? "text-zinc-500" : "text-zinc-400"
+            }`}
+            menuClassName="w-24 capitalize font-light text-[11.5px]"
+          />
+
+          {/* Lines Filter */}
+          <Select
+            value={lines}
+            onChange={setLines}
+            options={[50, 100, 200, 500].map((n) => ({ value: n, label: `${n} lines` }))}
+            size="sm"
+            triggerClassName="w-20 text-[11.5px] text-zinc-400 font-light"
+            menuClassName="w-20 font-light text-[11.5px]"
           />
         </div>
-        <Select
-          value={level}
-          onChange={setLevel}
-          options={[
-            { value: "all", label: "All levels" },
-            { value: "error", label: "error", className: "text-red-400" },
-            { value: "warn", label: "warn", className: "text-amber-400" },
-            { value: "info", label: "info", className: "text-blue-400" },
-            { value: "log", label: "log", className: "text-zinc-500" },
-          ]}
-          size="sm"
-          triggerClassName={`w-28 text-[12px] capitalize font-light ${
-            level === "error" ? "text-red-400" :
-            level === "warn" ? "text-amber-400" :
-            level === "info" ? "text-blue-400" :
-            level === "log" ? "text-zinc-500" : "text-zinc-300"
-          }`}
-          menuClassName="w-28 capitalize font-light"
-        />
-        <Select
-          value={lines}
-          onChange={setLines}
-          options={[50, 100, 200, 500].map((n) => ({ value: n, label: `${n} lines` }))}
-          size="sm"
-          triggerClassName="w-24 text-[12px] text-zinc-300 font-light"
-          menuClassName="w-24 font-light"
-        />
-        <button onClick={load} className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-900/70 border border-zinc-800/60 text-zinc-500 hover:text-zinc-300 transition-colors">
-          <RefreshCcw size={13} className={loading ? "animate-spin text-emerald-400" : ""} />
-        </button>
       </div>
 
       {/* Log list */}
-      <Card className="p-0 overflow-hidden">
-        <div className="max-h-[500px] overflow-y-auto font-mono text-[11.5px]">
-          {loading ? (
-            <div className="py-12 text-center text-zinc-600">Loading logs…</div>
+      <div className="border border-zinc-900 bg-black/40 rounded-lg overflow-hidden flex-1 mt-2">
+        <div className="max-h-[420px] min-h-[320px] overflow-auto font-mono text-[11px] custom-scrollbar p-1">
+          {loading && logs.length === 0 ? (
+            <div className="py-24 text-center text-zinc-600">Loading logs…</div>
           ) : logs.length === 0 ? (
-            <div className="py-12 text-center text-zinc-600">No logs found</div>
+            <div className="py-24 text-center text-zinc-700">No logs found</div>
           ) : (
             logs.map((entry, i) => (
-              <div key={i} className="flex gap-3 px-4 py-2 border-b border-zinc-800/40 hover:bg-zinc-800/30 transition-colors">
-                <span className="shrink-0 text-zinc-700 w-36 text-[10.5px] pt-0.5">{fmtTime(entry.timestamp)}</span>
-                <span className={`shrink-0 px-1.5 py-0.5 rounded border text-[10px] font-medium self-start ${logLevelStyle(entry.level)}`}>
-                  {entry.level?.toUpperCase()}
+              <div key={i} className="flex gap-2 px-2.5 py-1.5 border-b border-zinc-900/40 hover:bg-zinc-900/30 transition-colors text-[10.5px]">
+                <span className="shrink-0 text-zinc-700 w-28 text-[9.5px] pt-0.5">{fmtTime(entry.timestamp)}</span>
+                <span className={`shrink-0 px-1 py-0.2 rounded border text-[9px] font-semibold self-start tracking-wide uppercase ${logLevelStyle(entry.level)}`}>
+                  {entry.level}
                 </span>
-                <span className="text-zinc-400 break-all leading-relaxed">{entry.raw}</span>
+                <span className="text-zinc-400 break-all leading-relaxed whitespace-pre-wrap">{entry.raw}</span>
               </div>
             ))
           )}
         </div>
-      </Card>
+      </div>
+    </div>
+  )
+}
+
+const LogsSection = () => {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <LogPanel title="API Server Logs" serviceName="api" />
+      <LogPanel title="Discord Bot Logs" serviceName="bot" />
     </div>
   )
 }

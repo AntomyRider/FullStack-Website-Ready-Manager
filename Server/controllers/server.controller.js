@@ -205,88 +205,165 @@ exports.getHealth = async (req, res) => {
   }
 }
 
-// ─── 3. getLogs ─────────────────────────────────────────────
+// Helper to request logs from Docker remote socket
+const http = require("http");
 
-exports.getLogs = (req, res) => {
+const getDockerLogs = (containerName, lines) => {
+  return new Promise((resolve, reject) => {
+    const options = {
+      socketPath: "/var/run/docker.sock",
+      path: `/containers/${containerName}/logs?stdout=true&stderr=true&tail=${lines}&timestamps=true`,
+      method: "GET",
+    };
+
+    const clientReq = http.request(options, (res) => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`Docker API returned status code ${res.statusCode}`));
+        return;
+      }
+
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => {
+        resolve(Buffer.concat(chunks));
+      });
+      res.on("error", (err) => reject(err));
+    });
+
+    clientReq.on("error", (err) => reject(err));
+    clientReq.end();
+  });
+};
+
+// Parser for Docker Remote logs (demux stream + timestamps parsing)
+function parseDockerLogs(buffer) {
+  const entries = [];
+  let offset = 0;
+  while (offset + 8 <= buffer.length) {
+    const streamType = buffer.readUInt8(offset);
+    const frameLen = buffer.readUInt32BE(offset + 4);
+    if (offset + 8 + frameLen > buffer.length) {
+      break; // Incomplete frame
+    }
+    const payload = buffer.toString("utf8", offset + 8, offset + 8 + frameLen);
+    const level = streamType === 2 ? "error" : "info";
+
+    // Split payload by lines
+    const lines = payload.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const tsMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\s(.*)$/);
+      if (tsMatch) {
+        const rawContent = tsMatch[2];
+        let parsedLevel = level;
+        if (/error|failed|❌/i.test(rawContent)) {
+          parsedLevel = "error";
+        } else if (/warn|⚠️/i.test(rawContent)) {
+          parsedLevel = "warn";
+        } else if (/info|✅/i.test(rawContent)) {
+          parsedLevel = "info";
+        }
+
+        entries.push({
+          timestamp: new Date(tsMatch[1]).toISOString(),
+          level: parsedLevel,
+          raw: rawContent,
+        });
+      } else {
+        let parsedLevel = level;
+        if (/error|failed|❌/i.test(trimmed)) {
+          parsedLevel = "error";
+        } else if (/warn|⚠️/i.test(trimmed)) {
+          parsedLevel = "warn";
+        } else if (/info|✅/i.test(trimmed)) {
+          parsedLevel = "info";
+        }
+
+        entries.push({
+          timestamp: new Date().toISOString(),
+          level: parsedLevel,
+          raw: trimmed,
+        });
+      }
+    }
+    offset += 8 + frameLen;
+  }
+  return entries;
+}
+
+exports.getLogs = async (req, res) => {
   try {
     const {
       lines  = 100,
       level  = "all",   // all | error | warn | info
       since  = null,    // ISO string
       search = null,
-    } = req.query
+      service = "api",  // api | bot
+    } = req.query;
 
-    // PM2 log path (ปรับตาม setup)
-    const logPaths = [
-      "/root/.pm2/logs/app-out.log",
-      "/root/.pm2/logs/app-error.log",
-      `${process.cwd()}/logs/app.log`,
-    ]
+    const containerName = service === "bot" ? "license_bot" : "license_api";
+    const socketExists = fs.existsSync("/var/run/docker.sock");
 
-    const logFile = logPaths.find((p) => {
-      try { return fs.existsSync(p) } catch { return false }
-    })
+    let entries = [];
+    let source = "docker";
 
-    let entries = []
-
-    if (logFile) {
-      const raw    = exec(`tail -n ${Math.min(+lines, 1000)} "${logFile}"`)
-      const rawErr = logFile.includes("out") 
-        ? exec(`tail -n ${Math.min(+lines, 1000)} "${logFile.replace("out", "error")}"`)
-        : null
-
-      const allLines = [
-        ...(raw    ? raw.split("\n")    : []),
-        ...(rawErr ? rawErr.split("\n") : []),
-      ].filter(Boolean)
-
-      entries = allLines.map((line) => {
-        const tsMatch = line.match(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/)
-        return {
-          raw:       line,
-          timestamp: tsMatch ? new Date(tsMatch[0]).toISOString() : null,
-          level:     /error/i.test(line) ? "error"
-                   : /warn/i.test(line)  ? "warn"
-                   : /info/i.test(line)  ? "info"
-                   : "log",
-        }
-      })
+    if (socketExists) {
+      try {
+        const buffer = await getDockerLogs(containerName, Math.min(+lines, 1000));
+        entries = parseDockerLogs(buffer);
+      } catch (err) {
+        console.error("Failed to fetch logs from Docker socket:", err.message);
+        source = "fallback-files";
+      }
     } else {
-      // Fallback: journalctl (systemd)
-      const jctl = exec(`journalctl -u your-app --no-pager -n ${Math.min(+lines, 500)} --output=json`)
-      if (jctl) {
-        entries = jctl.split("\n").filter(Boolean).map((line) => {
-          try {
-            const j = JSON.parse(line)
-            return {
-              raw:       j.MESSAGE,
-              timestamp: j.__REALTIME_TIMESTAMP
-                ? new Date(+j.__REALTIME_TIMESTAMP / 1000).toISOString()
-                : null,
-              level:     j.PRIORITY <= 3 ? "error" : j.PRIORITY <= 4 ? "warn" : "info",
-            }
-          } catch { return null }
-        }).filter(Boolean)
+      source = "fallback-files";
+    }
+
+    if (source === "fallback-files") {
+      const logFile = `${process.cwd()}/logs/app.log`;
+      if (fs.existsSync(logFile)) {
+        const content = fs.readFileSync(logFile, "utf8");
+        entries = content.split("\n").filter(Boolean).map((line) => {
+          const tsMatch = line.match(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/);
+          return {
+            raw:       line,
+            timestamp: tsMatch ? new Date(tsMatch[0]).toISOString() : new Date().toISOString(),
+            level:     /error/i.test(line) ? "error"
+                     : /warn/i.test(line)  ? "warn"
+                     : /info/i.test(line)  ? "info"
+                     : "log",
+          };
+        });
+      } else {
+        entries = [
+          {
+            timestamp: new Date().toISOString(),
+            level: "warn",
+            raw: `Docker socket '/var/run/docker.sock' not found. Please mount /var/run/docker.sock in docker-compose.yml to view live remote logs.`,
+          }
+        ];
       }
     }
 
     // Filters
-    if (level !== "all") entries = entries.filter((e) => e.level === level)
-    if (since)           entries = entries.filter((e) => e.timestamp && new Date(e.timestamp) >= new Date(since))
-    if (search)          entries = entries.filter((e) => e.raw.toLowerCase().includes(search.toLowerCase()))
+    if (level !== "all") entries = entries.filter((e) => e.level === level);
+    if (since)           entries = entries.filter((e) => e.timestamp && new Date(e.timestamp) >= new Date(since));
+    if (search)          entries = entries.filter((e) => e.raw.toLowerCase().includes(search.toLowerCase()));
 
-    entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     return res.status(200).json({
       success: true,
       total:   entries.length,
-      source:  logFile ?? "journalctl",
+      source,
       data:    entries.slice(0, +lines),
-    })
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message })
+    return res.status(500).json({ success: false, message: error.message });
   }
-}
+};
 
 // ─── 4. getProcesses ────────────────────────────────────────
 

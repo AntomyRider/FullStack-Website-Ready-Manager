@@ -1,4 +1,4 @@
-import { KeyRound, LayoutDashboard, Server } from "lucide-react"
+import { KeyRound, LayoutDashboard, Server, Users } from "lucide-react"
 import { NavLink } from "react-router-dom"
 
 const menus = [
@@ -11,6 +11,11 @@ const menus = [
     name: "License Keys",
     path: "/licenses",
     icon: KeyRound,
+  },
+  {
+    name: "User Stats",
+    path: "/user-stats",
+    icon: Users,
   },
   {
     name: "Server",

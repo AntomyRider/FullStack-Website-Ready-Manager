@@ -4,7 +4,7 @@ import Select from "../ui/Select"
 const FilterLicenses = ({ availableDays = [], selectedDay, onChange }) => {
   const options = [
     { value: "all", label: "All" },
-    ...availableDays.map((day) => ({ value: day, label: `${day} days` })),
+    ...availableDays.map((day) => ({ value: day, label: day === 0 ? "Lifetime" : `${day} days` })),
   ]
 
   return (

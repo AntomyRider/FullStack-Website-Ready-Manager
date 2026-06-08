@@ -81,6 +81,20 @@ export const deleteAllkeys = async () => {
         return {
             success: false,
             message: error.message,
+            }
+        }
+}
+
+export const getTopupStats = async () => {
+    try {
+        const res = await licenseApi.get("/topup-stats")
+        return res.data
+    } catch (error) {
+        console.error(error)
+        return {
+            success: false,
+            message: error.message,
         }
     }
 }
+

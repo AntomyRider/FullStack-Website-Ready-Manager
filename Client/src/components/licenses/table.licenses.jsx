@@ -66,16 +66,52 @@ const UsedByBadge = ({ usedBy }) => {
 }
 
 const DaysCell = ({ expDays, expireAt }) => {
+  const isLifetime = !expireAt || expDays === 0
+  const label = isLifetime ? "Lifetime" : `${expDays || Math.ceil((new Date(expireAt) - new Date()) / 86_400_000)} days`
   const daysLeft = expireAt ? Math.ceil((new Date(expireAt) - new Date()) / 86_400_000) : null
-  const pct = daysLeft != null && expDays ? Math.min(100, Math.max(0, Math.round((daysLeft / expDays) * 100))) : null
-  const color = pct == null ? "bg-zinc-700" : pct < 15 ? "bg-red-400" : pct < 40 ? "bg-amber-300" : "bg-emerald-300"
-  const label = daysLeft == null ? `${expDays ?? 0} days` : daysLeft < 0 ? "Expired" : `${daysLeft}d left`
+  const pct = isLifetime ? 100 : (daysLeft != null && expDays ? Math.min(100, Math.max(0, Math.round((daysLeft / expDays) * 100))) : null)
+  const color = isLifetime ? "bg-emerald-300" : (pct == null ? "bg-zinc-700" : pct < 15 ? "bg-red-400" : pct < 40 ? "bg-amber-300" : "bg-emerald-300")
 
   return (
     <div className="space-y-1">
       <p className="text-[12px] tabular-nums text-zinc-400">{label}</p>
       <div className="h-1 w-14 overflow-hidden rounded-full bg-zinc-800">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct ?? 0}%` }} />
+      </div>
+    </div>
+  )
+}
+
+const UptimeStateCell = ({ isOnline, durationText }) => {
+  if (durationText === "-") return <span className="text-zinc-700">-</span>
+
+  return (
+    <div className="flex items-center gap-2">
+      {isOnline ? (
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+      ) : (
+        <span className="h-2 w-2 rounded-full bg-red-500/80" />
+      )}
+      <span className={`text-[12px] font-medium tracking-wide ${isOnline ? "text-emerald-400" : "text-zinc-400"}`}>
+        {durationText}
+      </span>
+    </div>
+  )
+}
+
+const UptimeUsageCell = ({ usagePercentage, activatedAt }) => {
+  if (!activatedAt) return <span className="text-zinc-700">-</span>
+
+  const color = usagePercentage < 20 ? "bg-zinc-500" : usagePercentage < 50 ? "bg-amber-300" : "bg-emerald-400"
+
+  return (
+    <div className="space-y-1">
+      <p className="text-[12px] tabular-nums font-medium text-zinc-300">{usagePercentage}%</p>
+      <div className="h-1 w-14 overflow-hidden rounded-full bg-zinc-800">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${usagePercentage}%` }} />
       </div>
     </div>
   )

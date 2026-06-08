@@ -15,7 +15,9 @@ const {
   redeemKey,
   claimStock,
   getStockStats,
-  checkDuplicateSlip
+  checkDuplicateSlip,
+  heartbeatKey,
+  getTopupStats
 } = require("../controllers/license.controller");
 
 router.post("/licenses/create", protect, createKey);
@@ -32,4 +34,6 @@ router.post('/licenses/redeem', redeemKey)
 router.post('/licenses/claim-stock', claimStock)
 router.post('/licenses/check-duplicate', checkDuplicateSlip)
 router.get('/licenses/stock-stats', getStockStats)
+router.post('/licenses/heartbeat', heartbeatKey)
+router.get('/licenses/topup-stats', protect, getTopupStats)
 module.exports = router;
