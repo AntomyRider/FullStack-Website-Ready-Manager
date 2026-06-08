@@ -68,6 +68,7 @@ const UsedByBadge = ({ usedBy }) => {
 const DaysCell = ({ expDays, expireAt }) => {
   const isLifetime = !expDays || expDays === 0
   const isExpired = expireAt && new Date(expireAt) < new Date()
+  const daysLeft = expireAt ? Math.ceil((new Date(expireAt) - new Date()) / 86_400_000) : null
 
   let label = ""
   let textColorClass = "text-emerald-400"
@@ -78,10 +79,11 @@ const DaysCell = ({ expDays, expireAt }) => {
     label = "Expired"
     textColorClass = "text-red-400 font-semibold"
   } else {
-    label = `${expDays} days`
+    // If activated, show days left, otherwise show total expDays
+    const displayDays = daysLeft !== null ? daysLeft : expDays
+    label = `${displayDays} days`
   }
 
-  const daysLeft = expireAt ? Math.ceil((new Date(expireAt) - new Date()) / 86_400_000) : null
   const pct = isLifetime ? 100 : (isExpired ? 0 : (daysLeft != null && expDays ? Math.min(100, Math.max(0, Math.round((daysLeft / expDays) * 100))) : null))
   const color = isLifetime ? "bg-emerald-400" : (isExpired ? "bg-red-400" : (pct == null ? "bg-zinc-700" : pct < 15 ? "bg-red-400" : pct < 40 ? "bg-amber-300" : "bg-emerald-400"))
 

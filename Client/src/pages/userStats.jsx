@@ -59,8 +59,8 @@ const UserStats = () => {
 
   // Filters logic
   const filteredLicenses = useMemo(() => {
-    // Show only keys that are actually used (claimed or activated)
-    let result = licenses.filter((l) => l.usedBy)
+    // Show only keys that are used, activated, and not expired
+    let result = licenses.filter((l) => l.usedBy && l.activatedAt && (!l.expireAt || new Date(l.expireAt) >= new Date()))
 
     // Search
     const term = search.trim().toLowerCase()
