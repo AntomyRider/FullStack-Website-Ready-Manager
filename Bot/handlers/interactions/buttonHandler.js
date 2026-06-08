@@ -13,6 +13,7 @@ const {
   ADMIN_ROLE_ID,
 } = require("../../config");
 const { makeEmbed, EmbedColor } = require("../../utils/embedBuilder");
+const { getUserKeys } = require("../../services/keyService");
 
 async function handleButton(interaction) {
   if (interaction.customId === "open_key_modal") {
@@ -34,19 +35,64 @@ async function handleButton(interaction) {
   }
 
   if (interaction.customId === "reset_hwid") {
-    const modal = new ModalBuilder()
-      .setCustomId("reset_modal")
-      .setTitle("Reset HWID");
+    await interaction.deferReply({ ephemeral: true });
 
-    const keyInput = new TextInputBuilder()
-      .setCustomId("user_key")
-      .setLabel("Key")
-      .setPlaceholder("xxxx-xxxx-xxxx-xxxx")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
+    try {
+      const res = await getUserKeys(interaction.user.id);
+      if (!res.success || !res.keys || res.keys.length === 0) {
+        return interaction.editReply({
+          embeds: [
+            makeEmbed(
+              "❌ ไม่พบไลเซนส์คีย์ของคุณ",
+              "ระบบไม่พบคีย์ใช้งานที่เปิดอยู่ของคุณในปัจจุบัน / You do not have any active keys.",
+              EmbedColor.ERROR
+            )
+          ]
+        });
+      }
 
-    modal.addComponents(new ActionRowBuilder().addComponents(keyInput));
-    return interaction.showModal(modal);
+      const select = new StringSelectMenuBuilder()
+        .setCustomId("reset_hwid_select")
+        .setPlaceholder("เลือกคีย์ที่ต้องการรีเซ็ต HWID...")
+        .addOptions(
+          res.keys.slice(0, 25).map((k) => {
+            const isLifetime = !k.expDays || k.expDays === 0;
+            const typeLabel = isLifetime ? "Lifetime" : `${k.expDays} วัน`;
+            const hwidLabel = k.hwid ? `HWID: ${k.hwid.slice(0, 20)}...` : "ยังไม่ผูก HWID";
+
+            return {
+              label: `คีย์: ${k.key.slice(0, 15)}...`,
+              description: `แพ็กเกจ: ${typeLabel} | ${hwidLabel}`,
+              value: k.key,
+              emoji: "🔑",
+            };
+          })
+        );
+
+      const row = new ActionRowBuilder().addComponents(select);
+
+      return interaction.editReply({
+        embeds: [
+          makeEmbed(
+            "🔄 เลือกคีย์ที่ต้องการรีเซ็ต HWID (Select Key to Reset)",
+            "โปรดเลือกคีย์การ์ดด้านล่างที่คุณต้องการทำรายการรีเซ็ตล็อคเครื่อง (HWID Reset)",
+            EmbedColor.INFO
+          )
+        ],
+        components: [row]
+      });
+    } catch (err) {
+      console.error("[Reset Button] Error querying user keys:", err);
+      return interaction.editReply({
+        embeds: [
+          makeEmbed(
+            "❌ เกิดข้อผิดพลาดของระบบ",
+            "ไม่สามารถติดต่อเซิร์ฟเวอร์หลังบ้านได้ โปรดลองอีกครั้งภายหลัง",
+            EmbedColor.ERROR
+          )
+        ]
+      });
+    }
   }
 
   if (interaction.customId === "buy_key") {

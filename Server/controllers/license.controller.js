@@ -866,10 +866,10 @@ exports.getStockStats = async (req, res) => {
       }
     });
 
-    // ดึงรายชื่อผู้ซื้อล่าสุด 10 คน
+    // ดึงรายชื่อผู้ซื้อล่าสุด 3 คน
     const recentPurchases = await prisma.purchaseHistory.findMany({
       orderBy: { purchasedAt: "desc" },
-      take: 10,
+      take: 3,
       select: {
         discordId: true,
         days: true,
@@ -991,6 +991,55 @@ exports.getTopupStats = async (req, res) => {
         totalTopup
       }
     });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getUserKeys = async (req, res) => {
+  try {
+    const { discordId, secretToken } = req.body;
+
+    if (!secretToken || secretToken !== process.env.BOT_SECRET) {
+      return res.status(401).json({ success: false, message: "Unauthorized token" });
+    }
+
+    if (!discordId) {
+      return res.status(400).json({ success: false, message: "discordId is required" });
+    }
+
+    const claims = await prisma.claim.findMany({
+      where: { discordId },
+      select: { key: true }
+    });
+
+    const keys = claims.map((c) => c.key);
+
+    if (keys.length === 0) {
+      return res.status(200).json({ success: true, keys: [] });
+    }
+
+    const now = new Date();
+    const licenses = await prisma.license.findMany({
+      where: {
+        key: { in: keys },
+        status: "Enable",
+        OR: [
+          { expireAt: null },
+          { expireAt: { gte: now } }
+        ]
+      },
+      select: {
+        id: true,
+        key: true,
+        expDays: true,
+        expireAt: true,
+        hwid: true,
+        resetCooldownAt: true
+      }
+    });
+
+    return res.status(200).json({ success: true, keys: licenses });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { API_URL } = require("../config");
+const { API_URL, BOT_SECRET } = require("../config");
 
 async function checkKey(key, discordId) {
   try {
@@ -38,7 +38,24 @@ async function checkKeyReset(key, discordId) {
   }
 }
 
+async function getUserKeys(discordId) {
+  try {
+    const res = await axios.post(`${API_URL}/licenses/user-keys`, {
+      discordId,
+      secretToken: BOT_SECRET,
+    });
+    return res.data;
+  } catch (err) {
+    if (err.response) {
+      console.log(`[USER KEYS API] Status: ${err.response.status} | Discord ID: ${discordId}`);
+      return { success: false, keys: [] };
+    }
+    throw err;
+  }
+}
+
 module.exports = {
   checkKey,
   checkKeyReset,
+  getUserKeys,
 };

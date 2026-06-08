@@ -98,7 +98,7 @@ function makeVerifyEmbed(imageUrl, stats, total, recentPurchases) {
   }
 
   if (recentPurchases && recentPurchases.length > 0) {
-    const list = recentPurchases.map((p) => {
+    const list = recentPurchases.slice(0, 3).map((p) => {
       const pkg = p.days === 0 ? "Lifetime (ถาวร)" : `${p.days} วัน`;
       const timeTag = `<t:${Math.floor(new Date(p.purchasedAt).getTime() / 1000)}:R>`;
       return `• <@${p.discordId}> ซื้อแพ็กเกจ **${pkg}** (${timeTag})`;

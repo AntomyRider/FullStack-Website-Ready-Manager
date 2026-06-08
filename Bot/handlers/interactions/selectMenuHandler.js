@@ -15,6 +15,7 @@ const {
   BANK_CATEGORY_ID,
 } = require("../../config");
 const { makeEmbed, EmbedColor } = require("../../utils/embedBuilder");
+const { checkKeyReset } = require("../../services/keyService");
 
 async function handleSelectMenu(interaction) {
   // Step 1: เลือก package → แสดง dropdown วิธีชำระเงิน
@@ -208,7 +209,57 @@ async function handleSelectMenu(interaction) {
         });
       }
     }
+
+    if (interaction.customId === "reset_hwid_select") {
+      await interaction.deferReply({ ephemeral: true });
+
+      const userKey = interaction.values[0];
+      const discordId = interaction.user?.id;
+
+      try {
+        await checkKeyReset(userKey, discordId);
+
+        return interaction.editReply({
+          embeds: [
+            makeEmbed(
+              "✅ รีเซ็ต HWID สำเร็จ (Reset Successful)",
+              `คีย์ \`${userKey.slice(0, 15)}...\` ได้รับการเคลียร์ค่าล็อคเครื่อง (HWID) เรียบร้อยแล้ว สามารถนำไปเข้าสู่ระบบกับคอมพิวเตอร์เครื่องใหม่ได้ทันทีครับ`,
+              EmbedColor.SUCCESS
+            )
+          ]
+        });
+      } catch (err) {
+        console.error("[Select Reset] Error resetting HWID:", err);
+
+        const errorMessages = {
+          KEY_NOT_FOUND: "ไม่พบรหัสคีย์นี้ในระบบ / License key not found.",
+          KEY_NOT_CLAIMED: "คีย์นี้ยังไม่ถูกเคลมเปิดใช้งาน / Key not claimed yet.",
+          NOT_OWNER: "คุณไม่ได้เป็นเจ้าของไลเซนส์คีย์นี้ / Not the owner of this key.",
+          COOLDOWN_ACTIVE: formatCooldown(err.cooldown),
+          MISSING_FIELDS: "ข้อมูลไม่ครบถ้วน / Missing required fields.",
+        };
+
+        const description = errorMessages[err.code] ?? err.message ?? "โปรดลองใหม่อีกครั้งในภายหลัง / Please try again later.";
+
+        return interaction.editReply({
+          embeds: [
+            makeEmbed(
+              "❌ รีเซ็ต HWID ไม่สำเร็จ",
+              description,
+              EmbedColor.ERROR
+            )
+          ]
+        });
+      }
+    }
   }
+}
+
+function formatCooldown(cooldown) {
+  if (!cooldown?.availableAt) return "คูลดาวน์ยังทำงานอยู่ โปรดรอสักครู่ / Cooldown active.";
+  const availableAt = new Date(cooldown.availableAt);
+  const time = `<t:${Math.floor(availableAt.getTime() / 1000)}:R>`;
+  return `คูลดาวน์ยังทำงานอยู่ — คุณจะสามารถรีเซ็ตได้อีกครั้งใน ${time}`;
 }
 
 module.exports = { handleSelectMenu };
