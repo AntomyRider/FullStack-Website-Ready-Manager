@@ -942,6 +942,9 @@ exports.heartbeatKey = async (req, res) => {
         // If the heartbeat is within a reasonable interval (e.g. 7 minutes), accumulate usage time
         if (diffSeconds > 0 && diffSeconds <= 7 * 60) {
           updatedData.totalUsageSeconds = license.totalUsageSeconds + diffSeconds;
+          if (!license.currentSessionStartAt) {
+            updatedData.currentSessionStartAt = now;
+          }
         } else {
           // If it was offline (longer than 7 minutes), reset session start
           updatedData.currentSessionStartAt = now;

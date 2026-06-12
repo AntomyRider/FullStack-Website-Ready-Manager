@@ -85,7 +85,7 @@ const SparklineCard = ({ label, value, tone = "zinc", dataPoints = [] }) => {
             {/* Area Fill */}
             <path d={svgPaths.fill} fill={`url(#spark-grad-${label.replace(/\s+/g, '-').toLowerCase()})`} />
             {/* Line Path */}
-            <path d={svgPaths.line} fill="none" stroke={currentTone.line} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={svgPaths.line} fill="none" stroke={currentTone.line} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
       </div>
