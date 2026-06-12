@@ -23,4 +23,31 @@ async function verifySlip(payload) {
     }
 }
 
-module.exports = { verifySlip }
+async function generateQrCode(amount) {
+    try {
+        const apiKey = process.env.EASYSLIP_API_KEY;
+        const phone = process.env.ADMIN_PHONE || '0832584267';
+        
+        const res = await axios.post('https://api.easyslip.com/v1/qr/generate', {
+            type: 'PROMPTPAY',
+            msisdn: phone,
+            amount: parseFloat(amount)
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
+        
+        return res.data;
+    } catch (err) {
+        if (err.response?.data) {
+            console.error('[BankService] EasySlip QR generation rejected:', err.response.data);
+            return err.response.data;
+        }
+        console.error('[BankService] QR generation network error:', err.message);
+        return { status: 503, message: err.message };
+    }
+}
+
+module.exports = { verifySlip, generateQrCode }

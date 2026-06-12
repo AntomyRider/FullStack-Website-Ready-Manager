@@ -8,6 +8,7 @@ import {
   Coins,
   Wallet,
   Landmark,
+  QrCode,
 } from "lucide-react"
 import { listKey, getTopupStats } from "../api/licenses"
 
@@ -18,7 +19,7 @@ import StatusDonut from "../components/dashboard/StatusDonut"
 
 const Dashboard = () => {
   const [licenses, setLicenses] = useState([])
-  const [topupStats, setTopupStats] = useState({ totalBank: 0, totalTrueMoney: 0, totalTopup: 0 })
+  const [topupStats, setTopupStats] = useState({ totalBank: 0, totalPromptPay: 0, totalTrueMoney: 0, totalTopup: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -106,7 +107,7 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard 
           label="Total Top up" 
           value={`${topupStats.totalTopup.toLocaleString()} THB`} 
@@ -118,6 +119,12 @@ const Dashboard = () => {
           value={`${topupStats.totalTrueMoney.toLocaleString()} THB`} 
           icon={Wallet} 
           tone="amber" 
+        />
+        <StatCard 
+          label="PromptPay Top up" 
+          value={`${topupStats.totalPromptPay.toLocaleString()} THB`} 
+          icon={QrCode} 
+          tone="sky" 
         />
         <StatCard 
           label="Bank Top up" 

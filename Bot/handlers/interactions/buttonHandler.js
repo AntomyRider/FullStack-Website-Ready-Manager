@@ -144,6 +144,9 @@ async function handleButton(interaction) {
   // ปุ่มปิดห้อง Bank (Admin กด)
   if (interaction.customId.startsWith("close_bank_channel_")) {
     const channelId = interaction.customId.replace("close_bank_channel_", "");
+    
+    const { clearInactivityTimer } = require("../../utils/inactivityManager");
+    clearInactivityTimer(channelId);
 
     if (!interaction.member.roles.cache.has(ADMIN_ROLE_ID)) {
       return interaction.reply({
@@ -151,18 +154,22 @@ async function handleButton(interaction) {
           makeEmbed("❌ ไม่มีสิทธิ์", "เฉพาะ Admin เท่านั้น", EmbedColor.ERROR),
         ],
         ephemeral: true,
-      });
+      }).catch(console.error);
     }
 
-    await interaction.reply({
-      embeds: [
-        makeEmbed(
-          "🗑️ กำลังปิดห้อง...",
-          "ห้องนี้จะถูกลบใน 5 วินาที",
-          EmbedColor.INFO,
-        ),
-      ],
-    });
+    try {
+      await interaction.reply({
+        embeds: [
+          makeEmbed(
+            "🗑️ กำลังปิดห้อง...",
+            "ห้องนี้จะถูกลบใน 5 วินาที",
+            EmbedColor.INFO,
+          ),
+        ],
+      });
+    } catch (err) {
+      console.warn("[Close Bank] Failed to reply to interaction, proceeding to delete channel:", err.message);
+    }
 
     setTimeout(async () => {
       try {

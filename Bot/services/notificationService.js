@@ -9,8 +9,8 @@ const { LOG_CHANNEL_ID } = require("../config");
  *   durationLabel: string,
  *   amount: number,       // หน่วย satang เสมอ
  *   key: string,
- *   method: "bank" | "truemoney",
- *   // bank only
+ *   method: "bank" | "truemoney" | "promptpay",
+ *   // bank/promptpay only
  *   senderName?: string,
  *   senderBank?: string,
  *   receiverBank?: string,
@@ -23,9 +23,13 @@ async function sendTopupSuccess(client, data) {
 
   const baht = data.amount / 100;
   const time = `<t:${Math.floor(Date.now() / 1000)}:F>`;
-  const isBank = data.method === "bank";
 
-  const title = isBank ? "🏦 BANK TRANSFER" : "💚 TRUEMONEY WALLET";
+  let title = "🏦 BANK TRANSFER";
+  if (data.method === "truemoney") {
+    title = "💚 TRUEMONEY WALLET";
+  } else if (data.method === "promptpay") {
+    title = "📱 PROMPTPAY (QR CODE)";
+  }
 
   const lines = [
     "```",
@@ -34,7 +38,7 @@ async function sendTopupSuccess(client, data) {
     `[ 💵 AMOUNT  ] ${baht} Bath`,
   ];
 
-  if (isBank) {
+  if (data.method === "bank" || data.method === "promptpay") {
     if (data.senderName) lines.push(`[ 🏧 SENDER  ] ${data.senderName} · ${data.senderBank ?? "-"}`);
     if (data.receiverBank) lines.push(`[ 🏦 BANK    ] ${data.receiverBank}`);
     if (data.transRef)    lines.push(`[ 🔖 REF    ] ${data.transRef}`);

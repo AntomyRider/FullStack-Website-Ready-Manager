@@ -221,7 +221,7 @@ async function handleBankSlipMessage(message) {
       expDays: days,
       secretToken: BOT_SECRET,
       amount: transferredBaht,
-      paymentMethod: "bank",
+      paymentMethod: message.channel.topic === "payment_method: promptpay" ? "promptpay" : "bank",
       transRef: transRef,
       payload: payload,
       senderName: senderName,
@@ -277,17 +277,18 @@ async function handleBankSlipMessage(message) {
     }
 
     // ─── Step 9: Notify + Update stats ──────────────────────────────────
+    const isPromptPay = message.channel.topic === "payment_method: promptpay";
     sendTopupSuccess(message.client, {
       discordId,
       tag: message.author.tag,
       durationLabel,
       amount: transferredBaht * 100, // sendTopupSuccess รับ satang
       key,
-      method: "bank", // ← เพิ่ม
-      senderName: senderName, // ← เพิ่ม (มีอยู่แล้วใน scope)
-      senderBank: senderBank, // ← เพิ่ม
-      receiverBank: receiverBank, // ← เพิ่ม
-      transRef: transRef, // ← เพิ่ม
+      method: isPromptPay ? "promptpay" : "bank",
+      senderName: senderName,
+      senderBank: senderBank,
+      receiverBank: receiverBank,
+      transRef: transRef,
     });
 
     updateVerifyMessage(message.client).catch((err) =>
@@ -298,6 +299,9 @@ async function handleBankSlipMessage(message) {
     const successDesc = dmSent
       ? `ซื้อคีย์แบบ **${durationLabel}** สำเร็จ!\nบอทส่งคีย์ไปยัง DM ของคุณแล้ว ✉️`
       : `ซื้อคีย์แบบ **${durationLabel}** สำเร็จ!\n\n⚠️ **DM ปิดอยู่ คีย์ของคุณ (เห็นเฉพาะคุณ):**\n\`\`\`\n${key}\n\`\`\`\n*คัดลอกเก็บไว้ด่วน!*`;
+
+    const { clearInactivityTimer } = require("../utils/inactivityManager");
+    clearInactivityTimer(message.channel.id);
 
     await message.channel.send({
       content: `<@${discordId}>`,

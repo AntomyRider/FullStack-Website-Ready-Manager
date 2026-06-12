@@ -1,5 +1,5 @@
 require('dotenv').config()
-
+// Trigger nodemon restart to load regenerated Prisma Client with PurchaseHistory
 const cors = require('cors') 
 const express = require('express')
 const licenseRouter = require("./routes/license.routes") 

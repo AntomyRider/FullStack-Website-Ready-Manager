@@ -88,7 +88,7 @@ exports.listKey = async (req, res) => {
       })
       .map((license) => {
         const now = new Date();
-        const isOnline = license.lastHeartbeatAt 
+        const isOnline = (license.currentSessionStartAt && license.lastHeartbeatAt)
           ? (now.getTime() - new Date(license.lastHeartbeatAt).getTime() <= 7 * 60 * 1000)
           : false;
 
@@ -658,7 +658,7 @@ exports.claimStock = async (req, res) => {
     // Run transactional query to isolate claims, prevent race conditions, and record history
     const result = await prisma.$transaction(async (tx) => {
       // 1. ตรวจสอบการชำระเงินซ้ำ (ถ้ามีข้อมูลการชำระเงินเข้ามา)
-      if (paymentMethod === "bank" && (transRef || payload)) {
+      if ((paymentMethod === "bank" || paymentMethod === "promptpay") && (transRef || payload)) {
         if (transRef) {
           const dupRef = await tx.verifiedSlip.findUnique({ where: { transRef } });
           if (dupRef) throw new Error("DUPLICATE_SLIP");
@@ -929,8 +929,8 @@ exports.heartbeatKey = async (req, res) => {
           updatedData.totalUsageSeconds = license.totalUsageSeconds + diffSeconds;
         }
       }
-      // Instantly mark offline by setting lastHeartbeatAt to 7 minutes and 10 seconds ago (so it is older than 7-minute online threshold)
-      updatedData.lastHeartbeatAt = new Date(now.getTime() - (7 * 60 + 10) * 1000);
+      // Instantly mark offline by setting lastHeartbeatAt to now and currentSessionStartAt to null
+      updatedData.lastHeartbeatAt = now;
       updatedData.currentSessionStartAt = null;
     } else {
       updatedData.lastHeartbeatAt = now;
@@ -974,19 +974,26 @@ exports.getTopupStats = async (req, res) => {
       _sum: { amount: true }
     });
 
+    const promptpayStats = await prisma.purchaseHistory.aggregate({
+      where: { paymentMethod: "promptpay" },
+      _sum: { amount: true }
+    });
+
     const truemoneyStats = await prisma.purchaseHistory.aggregate({
       where: { paymentMethod: "truemoney" },
       _sum: { amount: true }
     });
 
     const totalBank = bankStats._sum.amount || 0;
+    const totalPromptPay = promptpayStats._sum.amount || 0;
     const totalTrueMoney = truemoneyStats._sum.amount || 0;
-    const totalTopup = totalBank + totalTrueMoney;
+    const totalTopup = totalBank + totalPromptPay + totalTrueMoney;
 
     return res.status(200).json({
       success: true,
       data: {
         totalBank,
+        totalPromptPay,
         totalTrueMoney,
         totalTopup
       }

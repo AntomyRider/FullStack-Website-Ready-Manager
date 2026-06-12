@@ -15,9 +15,9 @@ async function onInteraction(interaction) {
       console.log(`[Interaction] ${new Date().toISOString()} - User: ${username} (${userId}) - Action: ${detail}`);
     }
 
-    if (interaction.isButton()) return handleButton(interaction);
-    if (interaction.isStringSelectMenu()) return handleSelectMenu(interaction);
-    if (interaction.isModalSubmit()) return handleModal(interaction);
+    if (interaction.isButton()) return await handleButton(interaction);
+    if (interaction.isStringSelectMenu()) return await handleSelectMenu(interaction);
+    if (interaction.isModalSubmit()) return await handleModal(interaction);
   } catch (err) {
     console.error("❌ Interaction Error:", err);
     await safeReplyError(interaction);
