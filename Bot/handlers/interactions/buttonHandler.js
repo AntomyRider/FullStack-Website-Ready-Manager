@@ -16,6 +16,72 @@ const { makeEmbed, EmbedColor } = require("../../utils/embedBuilder");
 const { getUserKeys } = require("../../services/keyService");
 
 async function handleButton(interaction) {
+  if (interaction.customId === "get_trial_key") {
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+      const { claimTrialKey } = require("../../services/keyService");
+      const result = await claimTrialKey(interaction.user.id);
+
+      if (!result.success) {
+        return interaction.editReply({
+          embeds: [
+            makeEmbed(
+              "❌ รับสิทธิ์คีย์ทดลองใช้งานไม่สำเร็จ",
+              result.message || "คุณอาจจะเคยรับสิทธิ์ทดลองใช้งานฟรี 1 วันไปแล้ว ไม่สามารถรับสิทธิ์ซ้ำได้ / You have already claimed a trial key.",
+              EmbedColor.ERROR
+            )
+          ]
+        });
+      }
+
+      // Try sending to DM
+      try {
+        await interaction.user.send({
+          embeds: [
+            makeEmbed(
+              "🎁 คีย์ทดลองใช้งานฟรี 1 วันของคุณ (Your 1-Day Trial Key)",
+              `นี่คือคีย์ทดลองใช้งานของคุณ:\n\`\`\`\n${result.key}\n\`\`\`\n*หมายเหตุ: คีย์ทดลองใช้มีอายุการใช้งาน 1 วัน (24 ชั่วโมง) นับตั้งแต่ทำการเปิดใช้งาน (Activate) ในโปรแกรมครั้งแรก*\n\nสามารถดาวน์โหลดโปรแกรมได้ที่ช่องดาวน์โหลดสาธารณะในดิสคอร์ด!`,
+              EmbedColor.SUCCESS
+            )
+          ]
+        });
+
+        return interaction.editReply({
+          embeds: [
+            makeEmbed(
+              "✅ ส่งคีย์ทดลองใช้งานสำเร็จ",
+              "ระบบได้ส่งคีย์ทดลองใช้งาน 1 วันไปทางข้อความส่วนตัว (DM) ของคุณเรียบร้อยแล้ว โปรดตรวจสอบกล่องข้อความ",
+              EmbedColor.SUCCESS
+            )
+          ]
+        });
+      } catch (dmErr) {
+        console.warn(`[Trial Button] DM closed for user ${interaction.user.tag}:`, dmErr.message);
+        return interaction.editReply({
+          embeds: [
+            makeEmbed(
+              "❌ ไม่สามารถส่งคีย์ทาง DM ได้",
+              "กรุณาตั้งค่าเปิดรับข้อความส่วนตัว (DM) จากสมาชิกในเซิร์ฟเวอร์ก่อน แล้วกดปุ่มรับสิทธิ์ใหม่อีกครั้ง",
+              EmbedColor.WARNING
+            )
+          ]
+        });
+      }
+    } catch (err) {
+      console.error("[Trial Button] Error claiming trial key:", err);
+      return interaction.editReply({
+        embeds: [
+          makeEmbed(
+            "❌ เกิดข้อผิดพลาดของระบบ",
+            "ไม่สามารถติดต่อเซิร์ฟเวอร์หลังบ้านได้ โปรดลองอีกครั้งภายหลัง",
+            EmbedColor.ERROR
+          )
+        ]
+      });
+    }
+  }
+
   if (interaction.customId === "open_key_modal") {
     const modal = new ModalBuilder()
       .setCustomId("key_modal")

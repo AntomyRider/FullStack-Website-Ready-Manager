@@ -78,9 +78,15 @@ async function updateVerifyMessage(client) {
         .setEmoji("💸"),
 
       new ButtonBuilder()
+        .setCustomId("get_trial_key")
+        .setLabel("TRIAL KEY")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("🎁"),
+
+      new ButtonBuilder()
         .setCustomId("reset_hwid")
         .setLabel("RESET HWID")
-        .setStyle(ButtonStyle.Primary)
+        .setStyle(ButtonStyle.Danger)
         .setEmoji("🔁"),
 
       new ButtonBuilder()

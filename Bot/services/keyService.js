@@ -54,8 +54,25 @@ async function getUserKeys(discordId) {
   }
 }
 
+async function claimTrialKey(discordId) {
+  try {
+    const res = await axios.post(`${API_URL}/licenses/claim-trial`, {
+      discordId,
+      secretToken: BOT_SECRET,
+    });
+    return res.data;
+  } catch (err) {
+    if (err.response) {
+      console.log(`[TRIAL API] Status: ${err.response.status} | Discord ID: ${discordId}`);
+      return err.response.data;
+    }
+    throw err;
+  }
+}
+
 module.exports = {
   checkKey,
   checkKeyReset,
   getUserKeys,
+  claimTrialKey,
 };
