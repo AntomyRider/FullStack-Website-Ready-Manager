@@ -2,16 +2,13 @@ const { makeEmbed, EmbedColor } = require("../utils/embedBuilder");
 const { readQrCode } = require("../helper/readQrCode");
 const { verifySlip } = require("../services/bankService");
 const axios = require("axios");
+const config = require("../config");
 const {
   BOT_SECRET,
   API_URL,
   ROLE_ID,
   ADMIN_ROLE_ID,
-  PRICE_1_DAY,
-  PRICE_7_DAYS,
-  PRICE_30_DAYS,
-  PRICE_LIFETIME,
-} = require("../config");
+} = config;
 const { sendTopupSuccess } = require("../services/notificationService");
 const { updateVerifyMessage } = require("./readyHandler");
 
@@ -176,10 +173,10 @@ async function handleBankSlipMessage(message) {
               `**ยอดที่โอนมา:** ${transferredBaht} บาท`,
               ``,
               `ราคาแพ็กเกจที่มี:`,
-              `• 1 วัน = ${PRICE_1_DAY} บาท`,
-              `• 7 วัน = ${PRICE_7_DAYS} บาท`,
-              `• 30 วัน = ${PRICE_30_DAYS} บาท`,
-              `• Lifetime = ${PRICE_LIFETIME} บาท`,
+              `• 1 วัน = ${config.PRICE_1_DAY} บาท`,
+              `• 7 วัน = ${config.PRICE_7_DAYS} บาท`,
+              `• 30 วัน = ${config.PRICE_30_DAYS} บาท`,
+              `• Lifetime = ${config.PRICE_LIFETIME} บาท`,
               ``,
               `*หากจำนวนเงินถูกต้อง โปรดแจ้ง <@&${ADMIN_ROLE_ID}>*`,
             ].join("\n"),
@@ -343,10 +340,10 @@ async function handleBankSlipMessage(message) {
 
 function resolvePackageByAmount(baht) {
   const map = [
-    { price: PRICE_1_DAY, days: 1, durationLabel: "1 วัน" },
-    { price: PRICE_7_DAYS, days: 7, durationLabel: "7 วัน" },
-    { price: PRICE_30_DAYS, days: 30, durationLabel: "30 วัน" },
-    { price: PRICE_LIFETIME, days: 0, durationLabel: "Lifetime (ถาวร)" },
+    { price: config.PRICE_1_DAY, days: 1, durationLabel: "1 วัน" },
+    { price: config.PRICE_7_DAYS, days: 7, durationLabel: "7 วัน" },
+    { price: config.PRICE_30_DAYS, days: 30, durationLabel: "30 วัน" },
+    { price: config.PRICE_LIFETIME, days: 0, durationLabel: "Lifetime (ถาวร)" },
   ];
   
   // ค้นหาแพ็กเกจทั้งหมดที่ราคา <= ยอดเงินที่โอนเข้ามา

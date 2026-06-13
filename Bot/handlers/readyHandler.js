@@ -3,6 +3,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
 const { VERIFY_CHANNEL_ID, EMBED_IMAGE_URL, API_URL } = require("../config");
 const { makeVerifyEmbed } = require("../utils/embedBuilder");
+const { getDynamicConfig } = require("../services/botConfigService");
 
 /**
  * ส่ง/อัปเดต embed + ปุ่ม ไปยัง verify channel
@@ -12,7 +13,8 @@ let lastStatsString = "";
 
 async function onReady(client) {
   try {
-    const channel = await client.channels.fetch(VERIFY_CHANNEL_ID);
+    const config = await getDynamicConfig();
+    const channel = await client.channels.fetch(config.verifyChannelId || VERIFY_CHANNEL_ID);
     if (!channel) return console.error("❌ ไม่พบ verify channel");
 
     // ลบข้อความเก่าของบอทออกทั้งหมดเพื่อให้การเริ่มระบบคลีน
@@ -36,7 +38,8 @@ async function onReady(client) {
 
 async function updateVerifyMessage(client) {
   try {
-    const channel = await client.channels.fetch(VERIFY_CHANNEL_ID);
+    const config = await getDynamicConfig();
+    const channel = await client.channels.fetch(config.verifyChannelId || VERIFY_CHANNEL_ID);
     if (!channel) return console.error("❌ ไม่พบ verify channel");
 
     // 1. ดึงสถิติจาก Server
@@ -54,8 +57,8 @@ async function updateVerifyMessage(client) {
       console.error("⚠️ ไม่สามารถดึงสถิติสต็อกจาก Server ได้:", apiErr.message);
     }
 
-    // ตรวจสอบการเปลี่ยนแปลงของข้อมูลเพื่อประหยัด API rate limit
-    const currentStatsString = JSON.stringify({ stats, total, recentPurchases });
+    // ตรวจสอบการเปลี่ยนแปลงของข้อมูล (รวมถึงการอัปเดตตั้งค่า BotConfig) เพื่อประหยัด API rate limit
+    const currentStatsString = JSON.stringify({ stats, total, recentPurchases, updatedAt: config.updatedAt });
 
     const messages = await channel.messages.fetch({ limit: 20 });
     const botMsg = messages.find((m) => m.author.id === client.user.id);
@@ -68,7 +71,7 @@ async function updateVerifyMessage(client) {
     }
 
     // 2. สร้าง Embed และ Row
-    const embed = makeVerifyEmbed(EMBED_IMAGE_URL, stats, total, recentPurchases);
+    const embed = makeVerifyEmbed(config.embedImageUrl || EMBED_IMAGE_URL, stats, total, recentPurchases, config);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()

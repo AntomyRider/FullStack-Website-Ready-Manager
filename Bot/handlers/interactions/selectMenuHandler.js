@@ -7,15 +7,12 @@ const {
   ButtonStyle,
   AttachmentBuilder,
 } = require("discord.js");
+const config = require("../../config");
 const {
-  PRICE_1_DAY,
-  PRICE_7_DAYS,
-  PRICE_30_DAYS,
-  PRICE_LIFETIME,
   ADMIN_ROLE_ID,
   BANK_CATEGORY_ID,
   ADMIN_PHONE,
-} = require("../../config");
+} = config;
 const { makeEmbed, EmbedColor } = require("../../utils/embedBuilder");
 const { checkKeyReset } = require("../../services/keyService");
 const { generateQrCode } = require("../../services/bankService");
@@ -33,10 +30,10 @@ async function handleSelectMenu(interaction) {
     const days = daysMap[interaction.values[0]];
 
     const priceMap = {
-      1: PRICE_1_DAY,
-      7: PRICE_7_DAYS,
-      30: PRICE_30_DAYS,
-      0: PRICE_LIFETIME,
+      1: config.PRICE_1_DAY,
+      7: config.PRICE_7_DAYS,
+      30: config.PRICE_30_DAYS,
+      0: config.PRICE_LIFETIME,
     };
 
     const price = priceMap[days];
@@ -87,13 +84,13 @@ async function handleSelectMenu(interaction) {
       await interaction.deferReply({ ephemeral: true });
 
       const priceMap = {
-        1: PRICE_1_DAY,
-        7: PRICE_7_DAYS,
-        30: PRICE_30_DAYS,
-        0: PRICE_LIFETIME,
+        1: config.PRICE_1_DAY,
+        7: config.PRICE_7_DAYS,
+        30: config.PRICE_30_DAYS,
+        0: config.PRICE_LIFETIME,
       };
 
-      const price = priceMap[days] ?? PRICE_LIFETIME;
+      const price = priceMap[days] ?? config.PRICE_LIFETIME;
       const durationLabel = days === 0 ? "Lifetime (ถาวร)" : `${days} วัน`;
 
       try {

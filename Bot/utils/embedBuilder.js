@@ -61,19 +61,20 @@ function makeWarningEmbed(title, description) {
 /**
  * Embed ยืนยัน Key (ส่งใน verify channel)
  */
-function makeVerifyEmbed(imageUrl, stats, total, recentPurchases) {
+function makeVerifyEmbed(imageUrl, stats, total, recentPurchases, config) {
+  const description = config?.embedDescription || [
+    "**<:ReadyIcon:1506734243898855505> READY MANAGER : โปรแกรมช่วยโพสต์**",
+    "",
+    "```",
+    "⚠️ WARNING\n",
+    "- กรุณาสร้างซองอั่งเปาให้มียอดเงินเพียงพอต่อราคาคีย์ที่ต้องการซื้อ",
+    "- หากเติมเงินเกินจากราคาคีย์ ระบบจะไม่คืนส่วนต่างทุกกรณี",
+    "```",
+  ].join("\n");
+
   const embed = new EmbedBuilder()
-    .setDescription(
-      [
-        "**<:ReadyIcon:1506734243898855505> READY MANAGER : โปรแกรมช่วยโพสต์**",
-        "",
-        "```",
-        "⚠️ WARNING\n",
-        "- กรุณาสร้างซองอั่งเปาให้มียอดเงินเพียงพอต่อราคาคีย์ที่ต้องการซื้อ",
-        "- หากเติมเงินเกินจากราคาคีย์ ระบบจะไม่คืนส่วนต่างทุกกรณี",
-        "```",
-      ].join("\n"),
-    )
+    .setTitle(config?.embedTitle || null)
+    .setDescription(description)
     .setColor(EmbedColor.SUCCESS)
     .setImage(imageUrl)
     .setTimestamp();

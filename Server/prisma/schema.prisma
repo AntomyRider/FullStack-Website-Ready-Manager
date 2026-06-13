@@ -91,3 +91,22 @@ model PurchaseHistory {
   @@index([purchasedAt])
 }
 
+model BotConfig {
+  id               Int      @id @default(1)
+  price1Day        Int      @default(19)
+  price7Days       Int      @default(69)
+  price30Days      Int      @default(169)
+  priceLifetime    Int      @default(199)
+  embedImageUrl    String   @db.VarChar(512)
+  embedTitle       String   @default("READY MANAGER : โปรแกรมช่วยโพสต์")
+  embedDescription String   @db.Text
+  bankName         String   @default("กรุงไทย")
+  bankHolder       String   @default("นครินทร์ งานยางหวาย")
+  bankAccount      String   @default("4280686564")
+  adminPhone       String   @default("0832584267")
+  verifyChannelId  String   @default("1506243441007398964")
+  logChannelId     String   @default("1512868304891412572")
+  updatedAt        DateTime @updatedAt
+}
+
+

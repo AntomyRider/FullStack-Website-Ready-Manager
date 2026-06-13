@@ -7,6 +7,7 @@ import Login from "./pages/login"
 import ProtectedRoute from "./middlewares/protectedRoute"
 import Server from "./pages/server"
 import UserStats from "./pages/userStats"
+import BotSettings from "./pages/botSettings"
 import { ToastProvider } from "./components/ui/ToastProvider"
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="licenses" element={<Licenses />} />
               <Route path="user-stats" element={<UserStats />} />
+              <Route path="bot-settings" element={<BotSettings />} />
               <Route path="server" element={<Server />} />
             </Route>
           </Route>

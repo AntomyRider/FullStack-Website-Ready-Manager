@@ -1,14 +1,11 @@
 const axios = require("axios");
+const config = require("../../config");
 const {
   ROLE_ID,
   ADMIN_PHONE,
   BOT_SECRET,
-  PRICE_1_DAY,
-  PRICE_7_DAYS,
-  PRICE_30_DAYS,
-  PRICE_LIFETIME,
   API_URL,
-} = require("../../config");
+} = config;
 const { checkKey, checkKeyReset } = require("../../services/keyService");
 const { redeemRaw } = require("../../services/voucherService");
 const { makeEmbed, EmbedColor } = require("../../utils/embedBuilder");
@@ -162,12 +159,12 @@ async function handleVoucherModal(interaction) {
 
   const price =
     days === 1
-      ? PRICE_1_DAY
+      ? config.PRICE_1_DAY
       : days === 7
-        ? PRICE_7_DAYS
+        ? config.PRICE_7_DAYS
         : days === 30
-          ? PRICE_30_DAYS
-          : PRICE_LIFETIME;
+          ? config.PRICE_30_DAYS
+          : config.PRICE_LIFETIME;
 
   const requiredSatang = price * 100;
   const durationLabel = days === 0 ? "Lifetime (ถาวร)" : `${days} วัน`;

@@ -5,13 +5,8 @@ const {
   StringSelectMenuBuilder,
   ActionRowBuilder,
 } = require("discord.js");
-const {
-  PRICE_1_DAY,
-  PRICE_7_DAYS,
-  PRICE_30_DAYS,
-  PRICE_LIFETIME,
-  ADMIN_ROLE_ID,
-} = require("../../config");
+const config = require("../../config");
+const { ADMIN_ROLE_ID } = config;
 const { makeEmbed, EmbedColor } = require("../../utils/embedBuilder");
 const { getUserKeys } = require("../../services/keyService");
 
@@ -168,25 +163,25 @@ async function handleButton(interaction) {
       .addOptions([
         {
           label: "1 Day",
-          description: `ราคา ${PRICE_1_DAY} บาท | ใช้งาน 1 วัน`,
+          description: `ราคา ${config.PRICE_1_DAY} บาท | ใช้งาน 1 วัน`,
           value: "buy_option_1",
           emoji: "⚡",
         },
         {
           label: "7 Days",
-          description: `ราคา ${PRICE_7_DAYS} บาท | ใช้งาน 7 วัน`,
+          description: `ราคา ${config.PRICE_7_DAYS} บาท | ใช้งาน 7 วัน`,
           value: "buy_option_7",
           emoji: "📅",
         },
         {
           label: "30 Days",
-          description: `ราคา ${PRICE_30_DAYS} บาท | ใช้งาน 30 วัน`,
+          description: `ราคา ${config.PRICE_30_DAYS} บาท | ใช้งาน 30 วัน`,
           value: "buy_option_30",
           emoji: "🧩",
         },
         {
           label: "Lifetime",
-          description: `ราคา ${PRICE_LIFETIME} บาท | ใช้งานถาวร`,
+          description: `ราคา ${config.PRICE_LIFETIME} บาท | ใช้งานถาวร`,
           value: "buy_option_0",
           emoji: "♾️",
         },
