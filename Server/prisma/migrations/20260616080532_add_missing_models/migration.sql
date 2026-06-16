@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `license` ADD COLUMN `currentSessionStartAt` DATETIME(3) NULL,
+ALTER TABLE `License` ADD COLUMN `currentSessionStartAt` DATETIME(3) NULL,
     ADD COLUMN `lastHeartbeatAt` DATETIME(3) NULL,
     ADD COLUMN `totalUsageSeconds` INTEGER NOT NULL DEFAULT 0;
 
