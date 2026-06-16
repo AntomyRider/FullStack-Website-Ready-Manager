@@ -476,20 +476,16 @@ const BotSettings = () => {
 
                 {/* Discord Interactive Buttons */}
                 <div className="flex flex-wrap gap-2 pt-1.5">
-                  <button type="button" className="bg-[#248046] hover:bg-[#1a6535] text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 shadow-sm transition">
-                    <span>💸</span>
+                  <button type="button" className="bg-[#248046] hover:bg-[#1a6535] text-white px-4 py-1.5 rounded text-xs font-medium shadow-sm transition">
                     <span>BUY KEY</span>
                   </button>
-                  <button type="button" className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 shadow-sm transition">
-                    <span>🎁</span>
-                    <span>TRIAL KEY</span>
+                  <button type="button" className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-4 py-1.5 rounded text-xs font-medium shadow-sm transition">
+                    <span>DOWNLOAD</span>
                   </button>
-                  <button type="button" className="bg-[#da373c] hover:bg-[#a92b2f] text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 shadow-sm transition">
-                    <span>🔁</span>
+                  <button type="button" className="bg-[#da373c] hover:bg-[#a92b2f] text-white px-4 py-1.5 rounded text-xs font-medium shadow-sm transition">
                     <span>RESET HWID</span>
                   </button>
-                  <button type="button" className="bg-[#4e5058] hover:bg-[#6d6f78] text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 shadow-sm transition">
-                    <span>🔑</span>
+                  <button type="button" className="bg-[#4e5058] hover:bg-[#6d6f78] text-white px-4 py-1.5 rounded text-xs font-medium shadow-sm transition">
                     <span>CLAIM KEY</span>
                   </button>
                 </div>

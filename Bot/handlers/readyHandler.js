@@ -77,26 +77,22 @@ async function updateVerifyMessage(client) {
       new ButtonBuilder()
         .setCustomId("buy_key")
         .setLabel("BUY KEY")
-        .setStyle(ButtonStyle.Success)
-        .setEmoji("💸"),
+        .setStyle(ButtonStyle.Success),
 
       new ButtonBuilder()
-        .setCustomId("get_trial_key")
-        .setLabel("TRIAL KEY")
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji("🎁"),
+        .setCustomId("download_app")
+        .setLabel("DOWNLOAD")
+        .setStyle(ButtonStyle.Primary),
 
       new ButtonBuilder()
         .setCustomId("reset_hwid")
         .setLabel("RESET HWID")
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji("🔁"),
+        .setStyle(ButtonStyle.Danger),
 
       new ButtonBuilder()
         .setCustomId("open_key_modal")
         .setLabel("CLAIM KEY")
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji("<:key:1506736572618510336>"),
+        .setStyle(ButtonStyle.Secondary),
     );
 
     if (botMsg) {

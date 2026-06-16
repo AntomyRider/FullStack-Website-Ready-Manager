@@ -4,6 +4,8 @@ const {
   TextInputStyle,
   StringSelectMenuBuilder,
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require("discord.js");
 const config = require("../../config");
 const { ADMIN_ROLE_ID } = config;
@@ -11,65 +13,55 @@ const { makeEmbed, EmbedColor } = require("../../utils/embedBuilder");
 const { getUserKeys } = require("../../services/keyService");
 
 async function handleButton(interaction) {
-  if (interaction.customId === "get_trial_key") {
+  if (interaction.customId === "download_app") {
     await interaction.deferReply({ ephemeral: true });
 
     try {
-      const { claimTrialKey } = require("../../services/keyService");
-      const result = await claimTrialKey(interaction.user.id);
+      const { getDownloadInfo } = require("../../services/releaseService");
+      const info = await getDownloadInfo();
 
-      if (!result.success) {
+      if (!info) {
         return interaction.editReply({
           embeds: [
             makeEmbed(
-              "❌ รับสิทธิ์คีย์ทดลองใช้งานไม่สำเร็จ",
-              result.message || "คุณอาจจะเคยรับสิทธิ์ทดลองใช้งานฟรี 1 วันไปแล้ว ไม่สามารถรับสิทธิ์ซ้ำได้ / You have already claimed a trial key.",
-              EmbedColor.ERROR
-            )
-          ]
-        });
-      }
-
-      // Try sending to DM
-      try {
-        await interaction.user.send({
-          embeds: [
-            makeEmbed(
-              "🎁 คีย์ทดลองใช้งานฟรี 1 วันของคุณ (Your 1-Day Trial Key)",
-              `นี่คือคีย์ทดลองใช้งานของคุณ:\n\`\`\`\n${result.key}\n\`\`\`\n*หมายเหตุ: คีย์ทดลองใช้มีอายุการใช้งาน 1 วัน (24 ชั่วโมง) นับตั้งแต่ทำการเปิดใช้งาน (Activate) ในโปรแกรมครั้งแรก*\n\nสามารถดาวน์โหลดโปรแกรมได้ที่ช่องดาวน์โหลดสาธารณะในดิสคอร์ด!`,
-              EmbedColor.SUCCESS
-            )
-          ]
-        });
-
-        return interaction.editReply({
-          embeds: [
-            makeEmbed(
-              "✅ ส่งคีย์ทดลองใช้งานสำเร็จ",
-              "ระบบได้ส่งคีย์ทดลองใช้งาน 1 วันไปทางข้อความส่วนตัว (DM) ของคุณเรียบร้อยแล้ว โปรดตรวจสอบกล่องข้อความ",
-              EmbedColor.SUCCESS
-            )
-          ]
-        });
-      } catch (dmErr) {
-        console.warn(`[Trial Button] DM closed for user ${interaction.user.tag}:`, dmErr.message);
-        return interaction.editReply({
-          embeds: [
-            makeEmbed(
-              "❌ ไม่สามารถส่งคีย์ทาง DM ได้",
-              "กรุณาตั้งค่าเปิดรับข้อความส่วนตัว (DM) จากสมาชิกในเซิร์ฟเวอร์ก่อน แล้วกดปุ่มรับสิทธิ์ใหม่อีกครั้ง",
+              "📥 ดาวน์โหลดโปรแกรม",
+              "ขออภัยด้วยครับ ไม่พบข้อมูลการปล่อยโปรแกรมเวอร์ชันล่าสุดในขณะนี้ โปรดติดต่อ Admin / No releases found at the moment.",
               EmbedColor.WARNING
             )
           ]
         });
       }
+
+      // Create a rich embed showing release information
+      const notesText = info.notes ? `\n**บันทึกการเปลี่ยนแปลง (Release Notes):**\n\`\`\`\n${info.notes.slice(0, 500)}${info.notes.length > 500 ? "..." : ""}\n\`\`\`` : "";
+
+      const downloadEmbed = makeEmbed(
+        `📥 ดาวน์โหลด Ready Manager [ ${info.version} ]`,
+        `**ชื่อไฟล์:** \`${info.fileName || "ReadyManager.exe"}\`\n**เวอร์ชันปัจจุบัน:** \`${info.version}\`\n**วันที่อัปเดต:** ${new Date(info.publishedAt).toLocaleDateString("th-TH", { day: "2-digit", month: "long", year: "numeric" })}${notesText}`,
+        EmbedColor.SUCCESS
+      );
+
+      // Create Link buttons
+      const downloadButtonRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel("ดาวน์โหลดตัวติดตั้ง (.exe)")
+          .setStyle(ButtonStyle.Link)
+          .setURL(info.downloadUrl || info.htmlUrl)
+          .setEmoji("💻")
+      );
+
+      return interaction.editReply({
+        embeds: [downloadEmbed],
+        components: [downloadButtonRow]
+      });
+
     } catch (err) {
-      console.error("[Trial Button] Error claiming trial key:", err);
+      console.error("[Download Button] Error fetching download link:", err);
       return interaction.editReply({
         embeds: [
           makeEmbed(
             "❌ เกิดข้อผิดพลาดของระบบ",
-            "ไม่สามารถติดต่อเซิร์ฟเวอร์หลังบ้านได้ โปรดลองอีกครั้งภายหลัง",
+            "ไม่สามารถดึงลิงก์ดาวน์โหลดได้ในขณะนี้ โปรดลองอีกครั้งภายหลัง",
             EmbedColor.ERROR
           )
         ]
