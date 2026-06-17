@@ -46,7 +46,7 @@ async function handleButton(interaction) {
         new ButtonBuilder()
           .setLabel("ดาวน์โหลดตัวติดตั้ง (.exe)")
           .setStyle(ButtonStyle.Link)
-          .setURL(info.downloadUrl || info.htmlUrl)
+          .setURL(info.downloadUrl)
           .setEmoji("💻")
       );
 

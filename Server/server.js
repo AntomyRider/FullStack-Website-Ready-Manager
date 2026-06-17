@@ -9,6 +9,7 @@ const adminRouter = require("./routes/admin.routes")
 const historyRouter = require("./routes/history.routes") 
 const serverRouter = require("./routes/server.routes")
 const botConfigRouter = require("./routes/botConfig.routes")
+const downloadRouter = require("./routes/download.routes")
 
 const PORT = process.env.PORT
 
@@ -37,6 +38,7 @@ app.use("/api", adminRouter);
 app.use("/api", historyRouter);
 app.use("/api", serverRouter);
 app.use("/api", botConfigRouter);
+app.use("/api", downloadRouter);
 
 app.listen(PORT, () => {
     console.log(`🚀 License server running on http://localhost:${PORT}`)

@@ -3,54 +3,30 @@ require("dotenv").config({ path: path.join(__dirname, "../.env") });
 require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 const axios = require("axios");
 
-async function getLatestRelease() {
-  const GITHUB_USERNAME = "AntomyRider";
-  const REPO_NAME = "Project-Automation";
-  const TOKEN = process.env.TOKEN_GIT; // in case there's a TOKEN_GIT in the bot's environment
-
-  const headers = {
-    Accept: "application/vnd.github.v3+json",
-    "User-Agent": "DiscordBot-ReadyManager",
-  };
-  if (TOKEN) {
-    headers["Authorization"] = `token ${TOKEN}`;
-  }
-
-  try {
-    const response = await axios.get(
-      `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/releases`,
-      { headers }
-    );
-    return response.data;
-  } catch (error) {
-    console.error("getLatestRelease error:", error.message);
-    throw error;
-  }
-}
-
+/**
+ * Fetches the latest release download info via the internal Server API.
+ * The Server handles GitHub authentication — Bot never needs TOKEN_GIT.
+ */
 async function getDownloadInfo() {
-  const releases = await getLatestRelease();
-  if (!releases || releases.length === 0) {
-    return null;
-  }
-  const latest = releases[0];
-  // Find an asset ending with .exe
-  const exeAsset = latest.assets.find(asset => asset.name.toLowerCase().endsWith('.exe'));
-  // Or fallback to the first asset if no .exe found
-  const downloadAsset = exeAsset || latest.assets[0];
+  const API_URL = process.env.API_URL || "http://localhost:3000/api";
+  const BOT_SECRET = process.env.BOT_SECRET || "READY_MANAGER_BOT_SECRET_2026";
 
-  return {
-    version: latest.tag_name,
-    name: latest.name,
-    notes: latest.body || "",
-    publishedAt: latest.published_at,
-    downloadUrl: downloadAsset ? downloadAsset.browser_download_url : null,
-    fileName: downloadAsset ? downloadAsset.name : null,
-    htmlUrl: latest.html_url
-  };
+  // Fix URL when running on Windows outside Docker
+  const baseUrl = API_URL.includes("://server:") && process.platform === "win32"
+    ? API_URL.replace("://server:", "://localhost:")
+    : API_URL;
+
+  const res = await axios.get(`${baseUrl}/download/latest`, {
+    headers: {
+      Authorization: `Bearer ${BOT_SECRET}`,
+    },
+  });
+
+  if (!res.data.success) {
+    throw new Error(res.data.message || "Failed to get download info");
+  }
+
+  return res.data;
 }
 
-module.exports = {
-  getLatestRelease,
-  getDownloadInfo,
-};
+module.exports = { getDownloadInfo };

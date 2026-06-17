@@ -37,6 +37,7 @@ services:
       DB_NAME: License
       BOT_SECRET: READY_MANAGER_BOT_SECRET_2026
       EASYSLIP_API_KEY: 50eb9b32-31c3-48ae-a6e2-fee943a30515
+      TOKEN_GIT: ${TOKEN_GIT}
     depends_on:
       db:
         condition: service_healthy
