@@ -26,7 +26,41 @@ async function getDownloadInfo() {
     throw new Error(res.data.message || "Failed to get download info");
   }
 
-  return res.data;
+  const info = res.data;
+
+  // Shorten the redirect URL via TinyURL so customers don't see the server IP
+  info.downloadUrl = await shortenUrl(info.downloadUrl);
+
+  return info;
+}
+
+// Cache the short URL so we only call TinyURL once per bot session
+let cachedShortUrl = null;
+
+/**
+ * Converts a long URL to a TinyURL short link.
+ * Falls back to the original URL if TinyURL is unavailable.
+ */
+async function shortenUrl(longUrl) {
+  if (cachedShortUrl) return cachedShortUrl;
+
+  try {
+    const res = await axios.get("https://tinyurl.com/api-create.php", {
+      params: { url: longUrl },
+      timeout: 5000,
+    });
+
+    if (res.data && res.data.startsWith("http")) {
+      cachedShortUrl = res.data.trim();
+      console.log(`[ReleaseService] Short URL created: ${cachedShortUrl}`);
+      return cachedShortUrl;
+    }
+  } catch (err) {
+    console.warn("[ReleaseService] TinyURL failed, using original URL:", err.message);
+  }
+
+  // Fallback: return the original URL (still works, just shows IP)
+  return longUrl;
 }
 
 module.exports = { getDownloadInfo };
