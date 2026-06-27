@@ -35,6 +35,7 @@ exports.getBotConfig = async (req, res) => {
       data: config
     });
   } catch (error) {
+    console.error("❌ Error in getBotConfig:", error);
     return res.status(500).json({
       success: false,
       message: error.message
@@ -122,6 +123,7 @@ exports.updateBotConfig = async (req, res) => {
       data: config
     });
   } catch (error) {
+    console.error("❌ Error in getBotConfig:", error);
     return res.status(500).json({
       success: false,
       message: error.message
